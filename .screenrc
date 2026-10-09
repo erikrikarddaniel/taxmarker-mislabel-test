@@ -1,0 +1,14 @@
+sessionname taxmarker-mislabel-tests
+setenv ROOT $PWD
+# __INSERTPOINT__ This line allows a script to insert new configuration lines here.
+chdir $ROOT/docs
+screen -t docs
+chdir $ROOT/data
+screen -t data
+chdir $ROOT/scripts
+screen -t scripts
+chdir $ROOT
+screen -t rstudio
+screen -t man
+screen -t claude
+screen -t root

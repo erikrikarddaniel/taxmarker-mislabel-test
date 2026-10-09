@@ -1,0 +1,492 @@
+---
+title: "Flagging injected mislabelled sequences with taxmarker: sativa-epang behaviour and RAxML-NG seed effects"
+author: "matricaria.suaveolens@gmail.com"
+date: "`r format(Sys.time(), '%Y-%m-%d')`"
+format:
+  html:
+    code-fold: true
+    toc: true
+    embed-resources: true
+bibliography:
+  - bibliography.bib
+  - tools.bib
+  - grateful-refs.bib
+---
+
+```{r setup}
+#| label: setup
+#| echo: false
+
+knitr::opts_chunk$set(echo = TRUE, fig.path='figures/', fig.width = 10)
+ggplot2::theme_set(ggplot2::theme_bw())
+```
+
+```{r libraries}
+#| label: libraries
+#| message: false
+#| include: false
+
+library(tibble)
+library(dplyr, warn.conflicts = FALSE)
+library(ggplot2)
+library(knitr)
+library(readr)
+library(tidyr)
+library(grateful)
+```
+
+# Version history
+
+- 2026-10-09: first draft, written from the analysis session of 2026-10-07 to 2026-10-09.
+- 2026-10-09: added the extra injection draws (`k5d2`, `k5d3`, `k10d2`, `k10d3`, `k15d1`, `k15d2`), the swapped pair `ecsa5/10/15` and the full-pipeline runs on the swapped pair.
+
+# Summary
+
+nf-core/taxmarker is a Nextflow pipeline that identifies mislabelled sequences, that is, sequences whose declared taxonomy disagrees with the sequence itself.
+It pre-filters sequences with raxtax [@raxtax], builds a reference tree with RAxML-NG [@raxmlng], and places each sequence back into that tree with sativa-epang [@sativa-epang], a version of SATIVA [@sativa] that uses EPA-ng [@epang] for the placement.
+A sequence the pipeline reports as mislabelled is said to be *flagged*.
+We investigate how many mislabelled sequences are flagged when several of them (k > 1) carry the same wrong label.
+The test set is a 1,969-sequence GTDB bacterial subset into which *Staphylococcus aureus* sequences are relabelled as *Escherichia coli* (and the reverse).
+The work falls into two themes.
+
+**Theme 1, behaviour under injections.**
+The *E. coli* group of the test set holds 18 true *E. coli* and 3 sequences that are really *S. aureus*; we relabel k = 5 or 10 of the 20 *S. aureus* sequences as *E. coli*.
+
+- sativa-epang alone flags 5/5 injected sequences at k = 5 in all three draws, but at k = 10 only 8/10 in the first draw and 0/10 in two further draws; at k = 15 it flags 0/15 in both draws.
+  The swapped pair (*E. coli* labelled *S. aureus*) gives 5/5, 2/10 and 0/15 at k = 5, 10 and 15.
+  So sativa-epang alone loses the injected sequences from k = 10, and which sequences are drawn matters.
+  Untouched sequences are newly flagged at k = 5 as often as between two repeated runs without injection (2-9 against 4-7), but more often at k = 10 and 15 in four of the five sets (8-19).
+- The three real *S. aureus* sequences in *E. coli* are a natural k = 3 case.
+  sativa-epang alone flags one of them.
+  With clustering in front of it (raxtax off), sativa-epang flags two, with lwr 1.0, since clustering removes the identical twin that shielded them.
+  The full pipeline also lists two, but through raxtax (genus confidence 0.91 and 0.90).
+  The third sits in a cluster with one of the two and is neither tested nor reported.
+- With 5 or 10 injected sequences the full pipeline, with clustering and raxtax in front of sativa-epang, flags none of them.
+  Clustering at identity 1.0 collapses the true *S. aureus* relatives (15 to 4 and 10 to 2 representatives), so the remaining ones tie with the injected sequences at the placement, and the raxtax genus confidence for *Staphylococcus* stays below the 0.9 cutoff.
+  Whether a lower clustering identity or cluster-size weights restore the flags is not yet tested.
+- The injected sequences nevertheless have a recognisable tree signature: a group of near-zero terminal branches on one long stem above a strict subset of a labelled taxon.
+  In a 5,226-taxon archaeal tree the same rule flags groups that are largely bacterial rRNA genes by BLAST.
+
+**Theme 2, speed and seeds.**
+
+- RAxML-NG `--fast` with a fixed model is about 10 times faster than the default search at 5,226 taxa and loses 283 log-likelihood units (0.03%).
+- Changing only the random seed moves the set of strong flags as much as dropping `--fast`.
+- Requiring a flag in every one of several seeds removes 25-45% of the background flags without losing the injected sequences, on the small test set.
+
+# Introduction
+
+SATIVA flags a sequence as mislabelled when, after the sequence has been removed from the reference tree, its maximum-likelihood placement falls in a clade of another taxon with high likelihood weight ratio (lwr).
+nf-core/taxmarker adds a taxonomy-constrained reference tree, sequence clustering and a raxtax pre-filter around that step.
+Preliminary results for the k-fold variant of the method (A. Gardette, manuscript in preparation) report that recall falls strongly as the number of mislabelled sequences in one taxon grows, because the remaining relatives increasingly carry the wrong label.
+That design assigns folds by stride over sorted accessions and leaves the reference tree free to follow the sequences.
+taxmarker differs in two ways:
+
+1. The reference tree is a topology-constrained search from the taxonomy, so injected sequences are forced into the wrong clade.
+2. Clustering and raxtax act before placement and change which sequences sativa-epang sees.
+
+The questions here are therefore:
+
+- Does recall fall with k in taxmarker's design, and are untouched sequences affected?
+- What stops mislabelled sequences from being flagged in the full pipeline, and can they be removed before they outvote the true sequences?
+- How much does the cheaper `--fast` tree search cost in classification, and can several seeds win that back?
+
+# Materials and Methods
+
+## Test set and injection
+
+The test set is a 1,969-sequence GTDB bacterial 16S subset (`k0.fna`).
+Only *S. aureus* and *E. coli* have more than three sequences (20 each).
+Three of the 21 sequences labelled *E. coli* are *S. aureus* by identity (99.93% to the injected anchors; listed in `real.txt`).
+They are counted separately and never as background.
+
+`scripts/inject.py` takes k sequences from the donor species and gives each the label of the recipient taxon; the sequence itself is left unchanged.
+The sequences are moved, not copied, so the donor species shrinks by k: at `k5` there are 26 sequences labelled *E. coli* (18 true, 3 real *S. aureus* and 5 injected) and 15 labelled *S. aureus*.
+The draw is made with `random.Random(seed).sample` (default seed 1) and donors in `real.txt` can be excluded.
+The maximum k is set by the number of donors (20).
+`dN` in a name is the number of the draw: sets without suffix (`k5`, `k10`) are the first draw, and `d2`, `d3` are independent draws (different donor sequences) of the same size.
+Every injected set comes with a truth file listing the injected identifiers.
+
+| Name | Donor | Recipient | k | Draws |
+|---|---|---|---|---|
+| `k5`, `k10` | *S. aureus* | *E. coli* | 5, 10 | seed 1 |
+| `k5d2`, `k5d3`, `k10d2`, `k10d3` | *S. aureus* | *E. coli* | 5, 10 | two more draws each |
+| `k15d1`, `k15d2` | *S. aureus* | *E. coli* | 15 | two draws |
+| `asaia5/10`, `marm5/10` | *S. aureus* | *Asaia* sp037151935, *E. marmotae* | 5, 10 | seed 1 |
+| `ecsa5/10/15` | *E. coli* | *S. aureus* | 5, 10, 15 | seed 1 |
+
+: Injected sets. {#tbl-sets}
+
+## Pipeline runs
+
+Two kinds of run were made with nf-core/taxmarker (`dev`, `--fast`, `GTR+FO+I+R10`).
+
+- **sativa-epang alone**: clustering and raxtax skipped, `--raxmlng_fast`, seed 42, 43 and 44 (`scripts/run_seeds.sh`).
+- **Full pipeline**: default clustering (`--cluster_identity 1.0`), raxtax with `--skip-exact-matches`, filter rank genus, `--raxtax_min_confidence 0.9`, seed 42 (`scripts/run_full.sh`).
+
+A flag is a row in `mislabels.tsv` with lwr above 0.9.
+This is the cutoff used throughout unless stated; 0.99 is used as a sensitivity check.
+
+## Metrics
+
+Following the four metrics sketched by A. Gardette:
+
+- **baseline flag rate**: flags in the uninjected set (`k0`);
+- **recall**: injected sequences flagged;
+- **collateral flags**: untouched sequences flagged after injection that were not flagged at `k0` with the same seed;
+- **lost baseline flags**: sequences flagged at `k0` but not after injection.
+
+The noise floor is `k0` against `k0` with a different seed.
+`scripts/auguste_metrics.py` computes all four and `scripts/score.py` computes recall and seed overlap (Jaccard).
+
+## Large-scale data
+
+Speed and seed overlap were also measured on 5,226 archaeal 16S sequences (GTDB r226) on a separate server with 12 threads: default search, `--fast` seed 42 and `--fast` seed 43.
+The tree-signature scan (`scripts/stemscan.py`) was run on all three trees and the sequences it flagged were checked by BLAST against the NCBI 16S type-strain database (27,648 sequences), assigning the domain of the best hit from the NCBI taxonomy dump.
+
+## R and packages
+
+This analysis was run with `r R.version$version.string`. Versions of packages used can be found in @tbl-cite-packages.
+
+```{r tbl-cite-packages}
+#| label: tbl-cite-packages
+#| tbl-cap: Versions of R and packages used in this analysis.
+
+cite_packages(output = "table", pkgs = "Session", out.dir = getwd()) %>%
+  kable()
+```
+
+# Results
+
+## Theme 1a: sativa-epang alone
+
+### Recall
+
+With the uninjected set as reference and `--fast` seed 42, recall is 5/5 at k = 5 and 8/10 at k = 10, for three different recipients:
+*E. coli* (sequence-rich, 18 true members), *E. marmotae* (one true member but many *Escherichia* sisters) and *Asaia* sp037151935 (one true member, isolated).
+The richness of the recipient and of its sister taxa makes no difference in the first draw.
+Injected sequences are flagged with mismatch rank 2 and lwr about 0.974-0.982, so the cutoff decides whether they are flagged.
+Recall is flat from lwr 0.9 to 0.97 and collapses at 0.99 for *E. coli* k = 10 (2/10); the poorer recipients stay at 8/10.
+
+```{r tbl-recall}
+#| label: tbl-recall
+#| tbl-cap: Recall of injected sequences (flagged / injected), sativa-epang alone, lwr > 0.9, seed 42, first draw.
+
+metrics <- read_tsv("data/metrics.tsv", show_col_types = FALSE)
+rng <- function(x) if (min(x) == max(x)) as.character(min(x)) else paste0(min(x), "-", max(x))
+
+metrics %>%
+  filter(seed == 42, set %in% c("k5", "k10", "marm5", "marm10", "asaia5", "asaia10")) %>%
+  mutate(
+    recipient = case_when(grepl("^k", set) ~ "E. coli", grepl("^marm", set) ~ "E. marmotae", TRUE ~ "Asaia sp037151935"),
+    k = paste0("k", injected),
+    recall = paste0(recalled, "/", injected)
+  ) %>%
+  select(recipient, k, recall) %>%
+  pivot_wider(names_from = k, values_from = recall) %>%
+  kable()
+```
+
+The recipient makes no difference in the first draw, but the draw does (@tbl-draws).
+At k = 5 all three draws give 5/5 in every seed.
+At k = 10 the first draw gives 8/10 in every seed, whereas the second and third give 0/10 in every seed.
+In `k10d2` and `k10d3` the injected sequences are not listed in `mislabels.tsv` at all, so no choice of cutoff would recover them.
+At k = 15 both draws give 0/15, and so does the swapped pair at k = 15; the swapped pair gives 5/5 at k = 5 and 2/10 at k = 10.
+I have not examined why the draws differ.
+
+```{r tbl-draws}
+#| label: tbl-draws
+#| tbl-cap: Recall, collateral flags and lost baseline flags (ranges over seeds 42-44) at lwr > 0.9, sativa-epang alone, for every injected set.
+
+draw_sets <- c("k5", "k5d2", "k5d3", "k10", "k10d2", "k10d3", "k15d1", "k15d2", "ecsa5", "ecsa10", "ecsa15")
+
+metrics %>%
+  filter(set %in% draw_sets) %>%
+  group_by(set) %>%
+  summarise(
+    injected = first(injected),
+    recall = paste0(rng(recalled), "/", first(injected)),
+    `collateral flags` = rng(collateral),
+    `lost baseline flags` = rng(lost_baseline)
+  ) %>%
+  arrange(match(set, draw_sets)) %>%
+  kable()
+```
+
+### Collateral and lost baseline flags
+
+The baseline is 17-19 flags of 1,969 (about 0.9%).
+Lost baseline flags (2-6 in every set) lie within the noise floor from repeated uninjected runs, which is +4-7 gained and 3-8 lost.
+Collateral flags (2-9) lie within it for `k5`, its two further draws, `k10` and the swapped pairs at k = 5 and 10 (up to 10, only just above).
+They are clearly above it, at 13-19, for `k10d2` and `k10d3`, the two sets in which none of the injected sequences is flagged, and at 8-12 for `k15d1` and `k15d2`.
+So when injected sequences go unflagged, other sequences are flagged more often.
+The baseline is only about 18 flags, so an effect of a few flags cannot be excluded.
+The three real *S. aureus* sequences labelled *E. coli* inflate the baseline and are counted separately.
+
+```{r tbl-metrics}
+#| label: tbl-metrics
+#| tbl-cap: Four metrics at lwr > 0.9 over seeds 42-44, first draw, injected set against the uninjected set at the same seed.
+
+first_draw <- metrics %>% filter(set %in% c("k5", "k10"))
+noise <- metrics %>% filter(set == "k0 vs k0")
+
+tribble(
+  ~metric,                          ~"k = 5 / 10",                                      ~"noise floor (k0 vs k0)",
+  "baseline flags",                 rng(first_draw$baseline_flags),                      "-",
+  "recall",                         paste(unique(paste0(first_draw$recalled, "/", first_draw$injected)), collapse = " and "), "-",
+  "collateral flags (gained)",      rng(first_draw$collateral),                          rng(noise$collateral),
+  "lost baseline flags",            rng(first_draw$lost_baseline),                       rng(noise$lost_baseline)
+) %>%
+  kable()
+```
+
+## Theme 1b: keeping mislabelled sequences from outvoting true sequences
+
+### The full pipeline does not flag them
+
+With the default clustering and raxtax in front, none of the injected sequences is flagged, neither by raxtax nor by sativa-epang.
+
+- `k5`: five injected sequences became three representatives (one shares a cluster of 14 with *S. aureus*, one a cluster of 2, one is alone).
+  0 of 3 flagged.
+- `k10`: ten became five representatives.
+  0 of 5 flagged.
+- Swapped pair (*E. coli* labelled *S. aureus*), seed 42: `ecsa5`: five injected sequences became five representatives, and four are flagged (three by sativa-epang, one by raxtax; the fifth has lwr 0.99 for *S. aureus*, i.e. placed back in its original taxon).
+  `ecsa10`: ten became seven representatives, 0 of 7 flagged.
+  `ecsa15`: fifteen became eight representatives, 0 of 8 flagged.
+- Without clustering and raxtax the same sets give 5/5 and 8/10 (`k5`, `k10`) and 5/5, 2/10 and 0/15 (`ecsa5/10/15`).
+
+```{r tbl-full}
+#| label: tbl-full
+#| tbl-cap: Full pipeline (default clustering, raxtax, seed 42) against sativa-epang alone (seed 42). Representatives stand for the injected sequences of their cluster.
+
+full <- read_tsv("data/full.tsv", show_col_types = FALSE)
+
+full %>%
+  group_by(set) %>%
+  summarise(representatives = n(), `flagged representatives` = sum(flagged_by != "-")) %>%
+  left_join(
+    metrics %>% filter(seed == 42) %>% transmute(set, injected, `sativa-epang alone` = paste0(recalled, "/", injected)),
+    by = "set"
+  ) %>%
+  select(set, injected, `sativa-epang alone`, representatives, `flagged representatives`) %>%
+  arrange(match(set, c("k5", "k10", "ecsa5", "ecsa10", "ecsa15"))) %>%
+  kable()
+```
+
+Two things happen.
+
+**raxtax.**
+With `--skip-exact-matches` an injected representative's exact *S. aureus* twin is skipped, while the other injected *E. coli*-labelled representatives vote for *E. coli*.
+The genus confidence for *Staphylococcus* is 0.49, 0.5 and 0.8 on the `k5` representatives and 0.15, 0.41, 0.48, 0.28 and 0.4 on the `k10` representatives, all below the 0.9 cutoff.
+The k = 0 run shows that raxtax does work for a single mislabelled sequence: it flags two of the three real ones (genus confidence 0.91 and 0.90, just over the 0.9 cutoff).
+The third is a non-representative member of the cluster of one of them (cluster 522), so it is neither tested nor listed in the output.
+sativa-epang alone, without clustering and raxtax, flags only the one that is not identical to another (lwr 1.0, all three seeds).
+With clustering but without raxtax, sativa-epang flags both representatives (`SQRB` and `SQRC`, lwr 1.0, `--fast` seed 42), so clustering helps sativa-epang in this k = 3 case: the *E. coli*-labelled group falls from 21 to 12 representatives and the identical pair collapses to one.
+
+**Placement.**
+In the constrained tree the injected leaves have terminal branches of about zero and hang as identical groups off the *E. coli* clade.
+Leaving one out leaves an identical twin inside the *E. coli* clade that ties with the identical *S. aureus* sequences.
+EPA-ng put one representative on about ten tied edges, five inside the *S. aureus* clade and five inside the *E. coli* clade, so the summed lwr is 0.5 against 0.5.
+Clustering also removes most of the true relatives that would outvote them.
+After clustering at identity 1.0 the *S. aureus* group, which carries the signal, falls from 15 to 4 representatives at `k5` and from 10 to 2 at `k10`, while the *E. coli*-labelled group falls only from 26 to 15 and from 31 to 17.
+The few remaining *S. aureus* representatives offer about as many tied placement edges as the injected ones, which is why the summed lwr splits evenly.
+Likelihood placement has no vote over the labelled lineage: *Escherichia* and Enterobacteriaceae relatives, at about 0.8 identity to these sequences, get negligible lwr.
+
+### An unexplained discrepancy
+
+For two `k5` representatives my sum of EPA-ng lwr per declared species gives *S. aureus* 1.0, and 0.92 and 0.76 for two `k10` representatives, yet none of them is in sativa-epang's `.mis`, although its `min_lwr` of 0.5 would pass.
+So the rule sativa-epang uses to decide a flag is not the summed lwr by leaf species.
+This is a question for the sativa-epang authors (see Discussion).
+
+### Raxtax rule variants
+
+Three flag rules at genus rank were tried on raxtax output without re-running the pipeline.
+Only taxa with another member can be checked (337 of 1,891 at `k0`).
+
+- **Current**: confidence of a different taxon above `--raxtax_min_confidence` (0.9).
+- **A**: the best taxon has strictly higher confidence than the declared one.
+- **B**: any different best assignment, to flag disagreement across lineages (for example a different phylum).
+
+```{r tbl-raxrule}
+#| label: tbl-raxrule
+#| tbl-cap: Raxtax rule variants at genus rank. Flags at k0, and injected representatives flagged.
+
+tribble(
+  ~rule,        ~"flags at k0", ~"k5 flagged (of 3)", ~"k10 flagged (of 5)",
+  "current",    12,             "0",                 "0",
+  "A",          37,             "1",                 "0",
+  "B",          37,             "2",                 "0"
+) %>%
+  kable()
+```
+
+No rule reaches the `k10` representatives, and phylum and class ranks flag the same injected representatives (135 flags at k0 at phylum).
+A raxtax cutoff alone does not remove the mislabelled sequences before placement.
+
+### A tree signature that does not depend on k
+
+In the constrained `k0` tree the three real *S. aureus*-labelled-*E. coli* sequences form a clade inside the *E. coli* clade on a stem of 0.453, longer than 99.9% of the 1,966 internal branches and 4.6 times the next longest stem above a single-species group.
+With 5 and 10 injected sequences the same stem (0.452) subtends 8 or 13 leaves, so the stem does not depend on k.
+
+On the 5,226-taxon archaeal data the rule "stem above a strict subset of one taxon" gives the same groups on all three trees (default search, `--fast` seed 42, `--fast` seed 43):
+
+```{r tbl-stem}
+#| label: tbl-stem
+#| tbl-cap: Groups with a stem above a strict subset of one taxon, identical on all three trees.
+
+tribble(
+  ~rank,     ~"stem >= 0.5", ~"stem >= 0.2", ~"stem >= 0.1",
+  "species", 8,              10,             17,
+  "genus",   10,             15,             25
+) %>%
+  kable()
+```
+
+So the signature does not depend on `--fast` or the seed.
+In species-rank groups with stem >= 0.2, 80% of the leaves are flagged in the run (background 8%).
+
+### BLAST and domain check
+
+61 leaves in stem groups, 60 leaves flagged without a stem and 60 unflagged controls were searched against the NCBI 16S type-strain database.
+
+```{r tbl-blast}
+#| label: tbl-blast
+#| tbl-cap: Best BLAST hit of leaves in stem groups, flagged leaves without a stem, and unflagged controls.
+
+tribble(
+  ~group,                 ~n,  ~"median identity (%)", ~"genus agrees (%)", ~Archaea, ~Bacteria, ~other,
+  "stem groups",          61,  88.4,                   3,                   30,       30,        1,
+  "flagged, no stem",     60,  92.0,                   25,                  46,       13,        1,
+  "unflagged controls",   60,  95.6,                   42,                  59,       1,         0
+) %>%
+  kable()
+```
+
+Genus agreement is low in the first two groups partly because GTDB placeholder genus names cannot match NCBI names; the control row is the reference.
+Of the 61 stem leaves, 46 are flagged by SATIVA and 15 are not:
+
+- 5 have bacterial hits (three in group WJMO01 sp014727915, two in RumEn-M2 sp001421175): probable mislabelled sequences not flagged by SATIVA;
+- 8 are placeholder-named lineages with 75-87% identity to archaeal genera: probably novel divergent lineages with no evidence of contamination;
+- 2 are second rRNA copies of *Halapricum desulfuricans* (100% identity to *Halapricum*): false positives of the rule.
+
+Bacterial best hits also occur without a stem (13 of 60 flagged leaves), so the stem rule flags only part of the mislabelled sequences.
+The single bacterial hit among 60 controls is too few to size what remains unflagged.
+The rule has not been tested against injected truth with k > 1 at this scale.
+
+## Theme 2: `--fast` and seeds
+
+### Speed and likelihood
+
+```{r tbl-speed}
+#| label: tbl-speed
+#| tbl-cap: RAxML-NG search on 5,226 archaeal sequences (GTR+FO+I+R10, 12 threads).
+
+tribble(
+  ~search,             ~seed, ~"time (s)", ~logL,
+  "default",           42,    34657,       -1085480,
+  "--fast",            42,    3533,        -1085763,
+  "--fast",            43,    2976,        -1085834
+) %>%
+  kable(format.args = list(big.mark = ","))
+```
+
+`--fast` is about 9.8 times faster and 283 log-likelihood units (0.03%) worse on the same taxa.
+On the 1,879-taxon bacterial subset the speedup with a fixed model is about 28 times (26,063 s against 939 s), while `GTR+G4` is faster still (651 s) but loses about half the strong SATIVA flags.
+
+### Flags across searches
+
+```{r tbl-jaccard}
+#| label: tbl-jaccard
+#| tbl-cap: Jaccard overlap of SATIVA flags at lwr > 0.9, 5,226 archaeal sequences.
+
+tribble(
+  ~pair,                    ~Jaccard,
+  "fast 42 - fast 43",      0.86,
+  "fast 42 - default 42",   0.86,
+  "fast 43 - default 42",   0.84
+) %>%
+  kable()
+```
+
+A seed change moves the flags as much as dropping `--fast`.
+250 flags are in both `--fast` seeds, and 243 of them (97%) are also in the default run; 41 flags are in one seed only, and 16 of those (39%) are in the default run.
+A single `--fast` seed has 270 flags, 253 of them (94%) in the default run.
+On the bacterial subset changing only the seed moves about 5 of 14 strong flags each way; flags present in both fast seeds were in the slow run 7 of 9 times against 4 of 10 for flags in one seed only.
+
+### A consensus over seeds
+
+On the small test set (`k0`, `k5`, `k10`, seeds 42-44) the rule "flag only if every seed flags" at lwr > 0.9 cuts background flags by about 25-45% without losing injected sequences.
+Majority voting barely beats a single seed and the union inflates the background.
+The same rule on the swapped pair (`ecsa5/10/15`, lwr > 0.9) keeps the recall of the single seeds (5/5, 2/10, 0/15) and cuts background flags from 16-20 to 12 at `ecsa5`, from 21-25 to 16 at `ecsa10` and from 20-21 to 14 at `ecsa15` (mean pairwise Jaccard between seeds 0.67-0.69).
+It cannot recover injected sequences that no seed flags, and in the sets where sativa-epang loses the injected sequences (`k10d2`, `k10d3`, k = 15) it has no recall to protect.
+The evidence is two donor/recipient pairs, so it is suggestive and not proven.
+Three `--fast` seeds cost about 3 h at 5,226 taxa, about a third of one default search; five seeds roughly match the default unless run in parallel.
+
+```{r tbl-consensus}
+#| label: tbl-consensus
+#| tbl-cap: Single seeds (42-44, range) against the rule "flag only if every seed flags" at lwr > 0.9, sativa-epang alone. Background = flagged sequences that are neither injected nor among the three real ones.
+
+consensus <- read_tsv("data/consensus.tsv", show_col_types = FALSE) %>%
+  filter(lwr == 0.9, set != "k0")
+cons_sets <- c("k5", "k5d2", "k5d3", "k10", "k10d2", "k10d3", "k15d1", "k15d2", "ecsa5", "ecsa10", "ecsa15")
+
+consensus %>%
+  filter(rule == "all" | grepl("^seed", rule)) %>%
+  mutate(rule = ifelse(rule == "all", "all", "single")) %>%
+  group_by(set, rule) %>%
+  summarise(found = rng(injected_found), background = rng(background), .groups = "drop") %>%
+  pivot_wider(names_from = rule, values_from = c(found, background)) %>%
+  left_join(consensus %>% filter(rule == "all") %>% select(set, injected, jaccard), by = "set") %>%
+  arrange(match(set, cons_sets)) %>%
+  transmute(
+    set,
+    injected,
+    `found, single` = found_single,
+    `found, all` = found_all,
+    `background, single` = background_single,
+    `background, all` = background_all,
+    `Jaccard between seeds` = jaccard
+  ) %>%
+  kable()
+```
+
+# Discussion
+
+**sativa-epang alone handles k = 5 but not reliably k = 10 or more.**
+Recall is 5/5 at k = 5 in all four sets and seeds, but at k = 10 it ranges from 8/10 through 2/10 to 0/10 depending on which sequences are injected, and at k = 15 it is 0/15 in all three sets.
+Where the injected sequences are lost, other sequences are also flagged more often than the noise floor.
+The first-draw result of 8/10 at k = 10 was not representative.
+The result cannot cover cases in which the mislabelled sequences are not identical to a sequence already in the data, and why some draws fail has not been examined.
+
+**The pre-filters and clustering, not sativa-epang, hide the mislabelled sequences in the full pipeline.**
+Clustering reduces many identical mislabelled sequences to a few representatives, but the remaining ones still vote for the wrong label at the raxtax step and tie at the placement step.
+Such sequences then need to be flagged before they reach the reference tree and the placement, since the tree itself contains them.
+
+**The stem signature is a candidate for that.**
+It is independent of k, `--fast` and the seed and flags many probable mislabelled sequences in a real data set.
+It also has failure modes (second rRNA copies, divergent real lineages) and does not flag mislabelled sequences without a long stem, so it needs calibration before it can be used to remove anything.
+
+Two ideas, not yet tested:
+
+1. Run the leave-one-out on clades of short internal branches instead of single sequences, so identical wrongly labelled siblings cannot rescue each other.
+2. Remove the long-stem groups from the tree, estimate the tree again without them, and still place them against the cleaner reference.
+
+Both can be judged with the metrics above on the injected sets and with the archaeal stem groups and their BLAST domain.
+
+**Questions for the sativa-epang authors.**
+
+- How are identical sequences with conflicting labels handled in scoring?
+- What is the effect of raxtax `--skip-exact-matches` in this setting?
+- How are folds assigned, and could folds be assigned by taxon (all members of a species or genus removed together)?
+- Why is a query with summed lwr 1.0 in a clade of another phylum not in `.mis`?
+- The sativa-epang documentation states that SATIVA's classification and decision logic is unchanged, yet the two implementations do not flag the same sequences.
+  Which step explains the difference, and could the same difference explain the unflagged queries above?
+
+**Limits.**
+One donor/recipient pair in each direction, two or three draws per size, one tree search per seed, no mutated copies, injection into a single taxon only, and a baseline of about 18 flags make small effects invisible.
+Counts of background flags do not transfer to large inputs; the mechanisms do.
+
+# References
+
+```{r}
+# vim: sw=2
+```

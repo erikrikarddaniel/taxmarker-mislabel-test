@@ -1,0 +1,29 @@
+set	representative	stands_for_injected	cluster_size	cluster_taxa	raxtax_top_genus	raxtax_top_conf	sativa_top_species	sativa_top_lwr	flagged_by
+k5	GB_GCA_014692985.1_JACODJ010000001.1	3	14	2	Escherichia	0.51	Staphylococcus aureus	0.5	-
+k5	RS_GCF_026625365.1_NZ_CP113032.1	1	2	2	Staphylococcus	0.5	Staphylococcus aureus	1.0	-
+k5	RS_GCF_001027105.1_NZ_CP011526.1-_4	1	1	1	Staphylococcus	0.8	Staphylococcus aureus	1.0	-
+k10	GB_GCA_014692985.1_JACODJ010000001.1	5	14	2	Escherichia	0.85	Escherichia coli	0.88	-
+k10	RS_GCF_001027105.1_NZ_CP011526.1	2	2	1	Escherichia	0.59	Escherichia coli	0.9	-
+k10	RS_GCF_001027105.1_NZ_CP011526.1-_4	1	1	1	Escherichia	0.52	Staphylococcus aureus	0.76	-
+k10	RS_GCF_900083305.1_NZ_FKXJ01000005.1	1	2	2	Escherichia	0.72	Staphylococcus aureus	0.92	-
+k10	RS_GCF_030644005.1_NZ_CP123742.1	1	1	1	Escherichia	0.6	Escherichia coli	0.88	-
+ecsa5	RS_GCF_030988915.1_NZ_CP058922.1-_6	1	1	1	Escherichia	0.97	NA	NA	raxtax
+ecsa5	GB_GCA_035620255.1_CP141656.1	1	4	2	G047199115	0.67	Escherichia coli	1.0	sativa
+ecsa5	RS_GCF_042852585.1_NZ_BAABZU010000001.1-_1	1	2	2	Escherichia	0.58	Escherichia coli	1.0	sativa
+ecsa5	RS_GCF_003226185.1_NZ_QKND01000002.1	1	1	1	Escherichia	0.54	Staphylococcus aureus	0.99	-
+ecsa5	RS_GCF_003697165.2_NZ_CP033092.2-_2	1	5	2	Escherichia	0.53	Escherichia coli	1.0	sativa
+ecsa10	RS_GCF_030988915.1_NZ_CP058922.1-_6	1	1	1	Staphylococcus	0.73	Staphylococcus aureus	1.0	-
+ecsa10	RS_GCF_030991425.1_NZ_CP059339.1-_1	1	1	1	Staphylococcus	0.83	Staphylococcus aureus	0.97	-
+ecsa10	RS_GCF_015472665.1_NZ_BNJC01000001.1-_2	1	1	1	Escherichia	0.59	Staphylococcus aureus	1.0	-
+ecsa10	GB_GCA_035620255.1_CP141656.1	3	4	2	G047199115	0.67	Escherichia coli	1.0	-
+ecsa10	RS_GCF_042852585.1_NZ_BAABZU010000001.1-_1	1	2	2	Escherichia	0.58	Escherichia coli	0.96	-
+ecsa10	RS_GCF_003226185.1_NZ_QKND01000002.1	1	1	1	Escherichia	0.54	Staphylococcus aureus	1.0	-
+ecsa10	RS_GCF_003697165.2_NZ_CP033092.2-_2	2	5	2	Escherichia	0.53	Escherichia coli	1.0	-
+ecsa15	RS_GCF_030988915.1_NZ_CP058922.1-_6	1	1	1	Staphylococcus	0.75	Staphylococcus aureus	1.0	-
+ecsa15	RS_GCF_030991425.1_NZ_CP059339.1-_1	1	1	1	Staphylococcus	0.85	Staphylococcus aureus	1.0	-
+ecsa15	RS_GCF_015472665.1_NZ_BNJC01000001.1-_2	1	1	1	Staphylococcus	0.92	Staphylococcus aureus	1.0	-
+ecsa15	RS_GCF_045621085.1_NZ_JBIXEB010000001.1	1	1	1	Staphylococcus	1.0	Staphylococcus aureus	1.0	-
+ecsa15	GB_GCA_035620255.1_CP141656.1	3	4	2	G047199115	0.67	Escherichia coli	1.0	-
+ecsa15	RS_GCF_000026285.1_NC_011742.1-_2	2	2	1	Staphylococcus	1.0	Staphylococcus aureus	1.0	-
+ecsa15	RS_GCF_003226185.1_NZ_QKND01000002.1	1	1	1	Staphylococcus	0.99	Staphylococcus aureus	1.0	-
+ecsa15	RS_GCF_003697165.2_NZ_CP033092.2	5	5	1	Staphylococcus	0.99	Staphylococcus aureus	1.0	-
