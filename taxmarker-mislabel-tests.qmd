@@ -288,6 +288,49 @@ p <- ggplot(d, aes(x, m, colour = setup, linetype = draw, shape = draw, group = 
 p
 ```
 
+```{r fig-collateral}
+#| label: fig-collateral
+#| fig-cap: "Newly flagged background sequences and lost baseline flags against k, sativa-epang alone at lwr above 0.9, compared with the same seed without injection. Bars span seeds 42-44 (seed 42 only for the last two pairs). The grey band is the range between two repeated runs without injection."
+#| fig-width: 12.5
+#| fig-height: 6.5
+
+pair_levels <- c(
+  "italic('Staphylococcus aureus')~'into'~italic('Escherichia coli')",
+  "italic('Escherichia coli')~'into'~italic('Staphylococcus aureus')",
+  "italic('Staphylococcus aureus')~'into'~italic('Escherichia marmotae')",
+  "italic('Staphylococcus aureus')~'into'~italic('Asaia')~'sp037151935'")
+setname <- function(x) tibble(
+  set = x,
+  pair = case_when(
+    grepl("^ecsa", x) ~ "italic('Escherichia coli')~'into'~italic('Staphylococcus aureus')",
+    grepl("^asaia", x) ~ "italic('Staphylococcus aureus')~'into'~italic('Asaia')~'sp037151935'",
+    grepl("^marm", x) ~ "italic('Staphylococcus aureus')~'into'~italic('Escherichia marmotae')",
+    TRUE ~ "italic('Staphylococcus aureus')~'into'~italic('Escherichia coli')"),
+  k = as.integer(sub("^[a-z]+([0-9]+).*", "\\1", x)),
+  draw = factor(case_when(grepl("d2$", x) ~ 2L, grepl("d3$", x) ~ 3L, TRUE ~ 1L)))
+m <- read_tsv("data/metrics.tsv", show_col_types = FALSE)
+noise <- m %>% filter(grepl(" vs ", set)) %>%
+  summarise(across(c(collateral, lost_baseline), list(lo = min, hi = max))) %>%
+  pivot_longer(everything(), names_to = c("measure", ".value"), names_pattern = "(collateral|lost_baseline)_(.*)")
+lab <- c(collateral = "Newly flagged background sequences", lost_baseline = "Baseline flags lost")
+d <- m %>% filter(!grepl(" vs ", set)) %>%
+  group_by(set) %>%
+  summarise(across(c(collateral, lost_baseline), list(m = mean, lo = min, hi = max)), .groups = "drop") %>%
+  left_join(setname(unique(.$set)), by = "set") %>%
+  pivot_longer(c(starts_with("collateral"), starts_with("lost_baseline")), names_to = c("measure", ".value"), names_pattern = "(collateral|lost_baseline)_(.*)") %>%
+  mutate(pair = factor(pair, pair_levels), measure = factor(measure, names(lab), lab), x = k + (as.integer(draw) - 2) * 0.12)
+noise <- mutate(noise, measure = factor(measure, names(lab), lab))
+p <- ggplot(d, aes(x, m, linetype = draw, shape = draw, group = draw)) +
+  geom_rect(data = noise, aes(ymin = lo, ymax = hi), xmin = -Inf, xmax = Inf, inherit.aes = FALSE, fill = "grey80", alpha = 0.6) +
+  geom_line() + geom_linerange(aes(ymin = lo, ymax = hi), linetype = "solid") + geom_point() +
+  scale_linetype_manual(values = c("solid", "dashed", "dotted")) + scale_shape_manual(values = c(16, 17, 15)) +
+  facet_grid(measure ~ pair, labeller = labeller(pair = label_parsed, measure = label_wrap_gen(24))) +
+  scale_x_continuous(breaks = c(5, 10, 15)) + expand_limits(y = 0) +
+  labs(x = "Injected sequences (k)", y = "Sequences", linetype = "Draw", shape = "Draw") +
+  theme_bw() + theme(legend.position = "bottom", strip.text.x = element_text(size = 7.5))
+p
+```
+
 ```{r tbl-draws}
 #| label: tbl-draws
 #| tbl-cap: Recall, collateral flags and lost baseline flags (ranges over seeds 42-44) at lwr > 0.9, sativa-epang alone, for every injected set.
