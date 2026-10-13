@@ -8,7 +8,7 @@ FULL_SETS      = k5 k10 ecsa5 ecsa10 ecsa15
 .DELETE_ON_ERROR:
 .PHONY: all
 
-all: metrics.tsv consensus.tsv full.tsv
+all: metrics.tsv consensus.tsv full.tsv full_flags.tsv
 
 metrics.tsv: $(SCRIPTS)/auguste_metrics.py $(SEEDTEST)/queue3.done
 	cd $(SEEDTEST) && python3 $(SCRIPTS)/auguste_metrics.py 0.9 $(METRIC_SETS) > $(CURDIR)/$@
@@ -18,3 +18,6 @@ consensus.tsv: $(SCRIPTS)/score.py $(SEEDTEST)/queue3.done
 
 full.tsv: $(SCRIPTS)/trace_full.py $(SEEDTEST)/queue3.done
 	cd $(SEEDTEST) && { python3 $(SCRIPTS)/trace_full.py $(firstword $(FULL_SETS)) | head -n 1; for s in $(FULL_SETS); do python3 $(SCRIPTS)/trace_full.py $$s | tail -n +2; done; } > $(CURDIR)/$@
+
+full_flags.tsv: $(SCRIPTS)/full_flags.py $(SEEDTEST)/queue3.done
+	cd $(SEEDTEST) && python3 $(SCRIPTS)/full_flags.py 0.9 $(FULL_SETS) > $(CURDIR)/$@

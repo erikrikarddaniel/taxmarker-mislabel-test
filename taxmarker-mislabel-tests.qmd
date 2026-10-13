@@ -76,8 +76,8 @@ The *E. coli* group of the test set holds 18 true *E. coli* and 3 sequences that
 # Introduction
 
 SATIVA flags a sequence as mislabelled when, after the sequence has been removed from the reference tree, its maximum-likelihood placement falls in a clade of another taxon with high likelihood weight ratio (lwr).
-nf-core/taxmarker adds a taxonomy-constrained reference tree, sequence clustering and a raxtax pre-filter around that step.
-Preliminary results for the k-fold variant of the method (A. Gardette, manuscript in preparation) report that recall falls strongly as the number of mislabelled sequences in one taxon grows, because the remaining relatives increasingly carry the wrong label.
+nf-core/taxmarker replaces the inbuilt estimation of a taxonomy-constrained reference tree, and adds sequence clustering and a raxtax pre-filter around that step.
+Preliminary results for the k-fold variant of the method (A. Gardette, manuscript in preparation) report that *recall falls strongly as the number of mislabelled sequences in one taxon grows*, because the remaining relatives increasingly carry the wrong label.
 That design assigns folds by stride over sorted accessions and leaves the reference tree free to follow the sequences.
 taxmarker differs in two ways:
 
@@ -192,6 +192,101 @@ At k = 10 the first draw gives 8/10 in every seed, whereas the second and third 
 In `k10d2` and `k10d3` the injected sequences are not listed in `mislabels.tsv` at all, so no choice of cutoff would recover them.
 At k = 15 both draws give 0/15, and so does the swapped pair at k = 15; the swapped pair gives 5/5 at k = 5 and 2/10 at k = 10.
 I have not examined why the draws differ.
+
+```{r fig-recall}
+#| label: fig-recall
+#| fig-cap: "Fraction of injected sequences flagged against k. Lines join the draws of one setup; the bar on sativa-epang alone spans seeds 42-44. Clustering + raxtax + sativa-epang is seed 42 and first draw only, and counts only injected sequences that are themselves flagged."
+#| fig-width: 9
+#| fig-height: 6.5
+
+pair_levels <- c(
+  "italic('Staphylococcus aureus')~'into'~italic('Escherichia coli')",
+  "italic('Escherichia coli')~'into'~italic('Staphylococcus aureus')",
+  "italic('Staphylococcus aureus')~'into'~italic('Escherichia marmotae')",
+  "italic('Staphylococcus aureus')~'into'~italic('Asaia')~'sp037151935'")
+setname <- function(x) tibble(
+  set = x,
+  pair = case_when(
+    grepl("^ecsa", x) ~ "italic('Escherichia coli')~'into'~italic('Staphylococcus aureus')",
+    grepl("^asaia", x) ~ "italic('Staphylococcus aureus')~'into'~italic('Asaia')~'sp037151935'",
+    grepl("^marm", x) ~ "italic('Staphylococcus aureus')~'into'~italic('Escherichia marmotae')",
+    TRUE ~ "italic('Staphylococcus aureus')~'into'~italic('Escherichia coli')"),
+  k = as.integer(sub("^[a-z]+([0-9]+).*", "\\1", x)),
+  draw = factor(case_when(grepl("d2$", x) ~ 2L, grepl("d3$", x) ~ 3L, TRUE ~ 1L)))
+sativa <- read_tsv("data/metrics.tsv", show_col_types = FALSE) %>%
+  filter(!grepl(" vs ", set)) %>%
+  mutate(recall = recalled / injected) %>%
+  group_by(set) %>%
+  summarise(setup = "sativa-epang alone", lo = min(recall), hi = max(recall), recall = mean(recall), .groups = "drop")
+consensus <- read_tsv("data/consensus.tsv", show_col_types = FALSE) %>%
+  filter(lwr == 0.9, rule == "all", injected > 0) %>%
+  transmute(set, setup = "sativa-epang, all 3 seeds agree", recall = injected_found / injected, lo = recall, hi = recall)
+full <- read_tsv("data/full.tsv", show_col_types = FALSE) %>%
+  group_by(set) %>%
+  summarise(setup = "clustering + raxtax + sativa-epang", recall = sum(flagged_by != "-") / sum(stands_for_injected), .groups = "drop") %>%
+  mutate(lo = recall, hi = recall)
+d <- bind_rows(sativa, consensus, full) %>% left_join(setname(unique(.$set)), by = "set") %>%
+  mutate(setup = factor(setup, c("sativa-epang alone", "sativa-epang, all 3 seeds agree", "clustering + raxtax + sativa-epang")),
+         pair = factor(pair, pair_levels))
+d <- mutate(d, x = k + c(-0.3, 0, 0.3)[as.integer(setup)] + (as.integer(draw) - 2) * 0.08)
+p <- ggplot(d, aes(x, recall, colour = setup, linetype = draw, shape = draw, group = interaction(setup, draw))) +
+  geom_line() + geom_linerange(aes(ymin = lo, ymax = hi), linetype = "solid") +
+  geom_point() + scale_linetype_manual(values = c("solid", "dashed", "dotted")) +
+  facet_wrap(~pair, labeller = label_parsed) +
+  scale_x_continuous(breaks = c(5, 10, 15)) + scale_y_continuous(limits = c(0, 1), labels = scales::percent) +
+  scale_shape_manual(values = c(16, 17, 15)) + labs(x = "Injected sequences (k)", y = "Injected sequences flagged", colour = "Setup", linetype = "Draw", shape = "Draw") +
+  theme_bw() + theme(legend.position = "bottom", legend.box = "vertical")
+
+p
+```
+
+```{r fig-background}
+#| label: fig-background
+#| fig-cap: "Flags other than the injected sequences, at lwr above 0.9, against k, with k = 0 as reference. Top: flags that are neither injected nor one of the three known mislabelled sequences. Bottom: how many of the three known mislabelled sequences are flagged. Bars span seeds 42-44; clustering + raxtax + sativa-epang is seed 42 and has no k = 0 run."
+#| fig-width: 9
+#| fig-height: 7
+
+pair_levels <- c(
+  "italic('Staphylococcus aureus')~'into'~italic('Escherichia coli')",
+  "italic('Escherichia coli')~'into'~italic('Staphylococcus aureus')",
+  "italic('Staphylococcus aureus')~'into'~italic('Escherichia marmotae')",
+  "italic('Staphylococcus aureus')~'into'~italic('Asaia')~'sp037151935'")
+setname <- function(x) tibble(
+  set = x,
+  pair = case_when(
+    grepl("^ecsa", x) ~ "italic('Escherichia coli')~'into'~italic('Staphylococcus aureus')",
+    grepl("^asaia", x) ~ "italic('Staphylococcus aureus')~'into'~italic('Asaia')~'sp037151935'",
+    grepl("^marm", x) ~ "italic('Staphylococcus aureus')~'into'~italic('Escherichia marmotae')",
+    TRUE ~ "italic('Staphylococcus aureus')~'into'~italic('Escherichia coli')"),
+  k = as.integer(sub("^[a-z]+([0-9]+).*", "\\1", x)),
+  draw = factor(case_when(grepl("d2$", x) ~ 2L, grepl("d3$", x) ~ 3L, TRUE ~ 1L)))
+setups <- c("sativa-epang alone", "sativa-epang, all 3 seeds agree", "clustering + raxtax + sativa-epang")
+cons <- read_tsv("data/consensus.tsv", show_col_types = FALSE) %>% filter(lwr == 0.9, rule == "all" | grepl("^seed", rule)) %>%
+  mutate(setup = ifelse(rule == "all", setups[2], setups[1])) %>%
+  group_by(set, setup) %>%
+  summarise(across(c(background, real_found), list(m = mean, lo = min, hi = max)), .groups = "drop")
+full <- read_tsv("data/full_flags.tsv", show_col_types = FALSE) %>%
+  transmute(set, setup = setups[3], background_m = background, background_lo = background, background_hi = background,
+            real_found_m = real_flagged, real_found_lo = real_flagged, real_found_hi = real_flagged)
+d <- bind_rows(cons, full) %>% left_join(setname(unique(.$set)), by = "set")
+k0 <- filter(d, set == "k0") %>% select(-pair, -draw, -k)
+d <- filter(d, set != "k0")
+k0 <- d %>% distinct(pair, draw) %>% cross_join(k0) %>% mutate(k = 0L)
+d <- bind_rows(d, k0) %>%
+  pivot_longer(c(starts_with("background"), starts_with("real_found")), names_to = c("measure", ".value"), names_pattern = "(background|real_found)_(.*)") %>%
+  mutate(setup = factor(setup, setups), pair = factor(pair, pair_levels),
+         measure = factor(measure, c("background", "real_found"), c("Flags that are neither injected nor known", "Known mislabelled flagged (of 3)")),
+         x = k + c(-0.3, 0, 0.3)[as.integer(setup)] + (as.integer(draw) - 2) * 0.08)
+p <- ggplot(d, aes(x, m, colour = setup, linetype = draw, shape = draw, group = interaction(setup, draw))) +
+  geom_line() + geom_linerange(aes(ymin = lo, ymax = hi), linetype = "solid") + geom_point() +
+  scale_linetype_manual(values = c("solid", "dashed", "dotted")) + scale_shape_manual(values = c(16, 17, 15)) +
+  facet_grid(measure ~ pair, scales = "free_y", labeller = labeller(pair = label_parsed, measure = label_wrap_gen(24))) +
+  scale_x_continuous(breaks = c(0, 5, 10, 15)) + expand_limits(y = 0) +
+  labs(x = "Injected sequences (k)", y = NULL, colour = "Setup", linetype = "Draw", shape = "Draw") +
+  theme_bw() + theme(legend.position = "bottom", legend.box = "vertical")
+
+p
+```
 
 ```{r tbl-draws}
 #| label: tbl-draws
