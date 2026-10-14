@@ -226,6 +226,8 @@ setname <- function(x) tibble(
     TRUE ~ paste0(sa, "~'into'~", ec)),
   k = as.integer(sub("^[a-z]+([0-9]+).*", "\\1", x)),
   draw = factor(case_when(grepl("d2$", x) ~ 2L, grepl("d3$", x) ~ 3L, TRUE ~ 1L)))
+# k10 sets leave 10 donors, so they are also the k = 10 end of the delete design
+with_k10_delete <- function(d) bind_rows(d, d %>% filter(set %in% c("k10", "k10d2", "k10d3")) %>% mutate(pair = delete_pair))
 # k0del10 is the k = 0 point of every draw in the delete design
 spread_k0del <- function(d) {
   k0 <- d %>% filter(set == "k0del10") %>% select(-draw) %>% cross_join(tibble(draw = factor(1:3)))
@@ -237,7 +239,7 @@ delete_consensus <- read_tsv("data/delete_consensus.tsv", show_col_types = FALSE
 
 ```{r fig-recall}
 #| label: fig-recall
-#| fig-cap: "Fraction of injected sequences flagged against k. Lines join the draws of one setup; the bar on sativa-epang alone spans seeds 42-44. Clustering + raxtax + sativa-epang is seed 42 and first draw only, and counts only injected sequences that are themselves flagged. The second panel is the delete design: 10 true donors are kept whatever k is (draws 1-3, sativa-epang only)."
+#| fig-cap: "Fraction of injected sequences flagged against k. Lines join the draws of one setup; the bar on sativa-epang alone spans seeds 42-44. Clustering + raxtax + sativa-epang is seed 42 and first draw only, and counts only injected sequences that are themselves flagged. The second panel is the delete design: 10 true donors are kept whatever k is (k = 3, 5 and, because it leaves 10 donors too, the moved k = 10). All panels share the x axis."
 #| fig-width: 9
 #| fig-height: 6.5
 
@@ -256,13 +258,14 @@ full <- read_tsv("data/full.tsv", show_col_types = FALSE) %>%
   summarise(setup = "clustering + raxtax + sativa-epang", recall = sum(flagged_by != "-") / sum(stands_for_injected), .groups = "drop") %>%
   mutate(lo = recall, hi = recall)
 d <- bind_rows(sativa, consensus, full) %>% left_join(setname(unique(.$set)), by = "set") %>%
+  with_k10_delete() %>%
   mutate(setup = factor(setup, c("sativa-epang alone", "sativa-epang, all 3 seeds agree", "clustering + raxtax + sativa-epang")),
          pair = factor(pair, pair_levels))
 d <- mutate(d, x = k + c(-0.3, 0, 0.3)[as.integer(setup)] + (as.integer(draw) - 2) * 0.08)
 p <- ggplot(d, aes(x, recall, colour = setup, linetype = draw, shape = draw, group = interaction(setup, draw))) +
   geom_line() + geom_linerange(aes(ymin = lo, ymax = hi), linetype = "solid") +
   geom_point() + scale_linetype_manual(values = c("solid", "dashed", "dotted")) +
-  facet_wrap(~pair, labeller = label_parsed, scales = "free_x") +
+  facet_wrap(~pair, labeller = label_parsed) +
   scale_x_continuous(breaks = c(3, 5, 10, 15), expand = expansion(add = 0.8)) + scale_y_continuous(limits = c(0, 1), labels = scales::percent) +
   scale_shape_manual(values = c(16, 17, 15)) + labs(x = "Injected sequences (k)", y = "Injected sequences flagged", colour = "Setup", linetype = "Draw", shape = "Draw") +
   theme_bw() + theme(legend.position = "bottom", legend.box = "vertical")
@@ -284,7 +287,7 @@ cons <- read_tsv("data/consensus.tsv", show_col_types = FALSE) %>% bind_rows(del
 full <- read_tsv("data/full_flags.tsv", show_col_types = FALSE) %>%
   transmute(set, setup = setups[3], background_m = background, background_lo = background, background_hi = background,
             real_found_m = real_flagged, real_found_lo = real_flagged, real_found_hi = real_flagged)
-d <- bind_rows(cons, full) %>% left_join(setname(unique(.$set)), by = "set")
+d <- bind_rows(cons, full) %>% left_join(setname(unique(.$set)), by = "set") %>% with_k10_delete()
 k0 <- filter(d, set == "k0") %>% select(-pair, -draw, -k)
 d <- filter(d, set != "k0")
 k0 <- d %>% filter(pair != delete_pair) %>% distinct(pair, draw) %>% cross_join(k0) %>% mutate(k = 0L)
@@ -296,7 +299,7 @@ d <- bind_rows(spread_k0del(d), k0) %>%
 p <- ggplot(d, aes(x, m, colour = setup, linetype = draw, shape = draw, group = interaction(setup, draw))) +
   geom_line() + geom_linerange(aes(ymin = lo, ymax = hi), linetype = "solid") + geom_point() +
   scale_linetype_manual(values = c("solid", "dashed", "dotted")) + scale_shape_manual(values = c(16, 17, 15)) +
-  facet_grid(measure ~ pair, scales = "free", labeller = labeller(pair = label_parsed, measure = label_wrap_gen(24))) +
+  facet_grid(measure ~ pair, scales = "free_y", labeller = labeller(pair = label_parsed, measure = label_wrap_gen(24))) +
   scale_x_continuous(breaks = c(0, 3, 5, 10, 15), expand = expansion(add = 0.8)) + expand_limits(y = 0) +
   labs(x = "Injected sequences (k)", y = NULL, colour = "Setup", linetype = "Draw", shape = "Draw") +
   theme_bw() + theme(legend.position = "bottom", legend.box = "vertical")
@@ -326,6 +329,7 @@ full <- read_tsv("data/full_flags.tsv", show_col_types = FALSE) %>%
   transmute(set, setup = setups[2], across(c(collateral, lost_baseline), list(m = identity, lo = identity, hi = identity)))
 d <- bind_rows(d, full) %>%
   left_join(setname(unique(.$set)), by = "set") %>%
+  with_k10_delete() %>%
   spread_k0del() %>%
   pivot_longer(c(starts_with("collateral"), starts_with("lost_baseline")), names_to = c("measure", ".value"), names_pattern = "(collateral|lost_baseline)_(.*)") %>%
   mutate(pair = factor(pair, pair_levels), measure = factor(measure, names(lab), lab), setup = factor(setup, setups),
@@ -336,7 +340,7 @@ p <- ggplot(d, aes(x, m, colour = setup, linetype = draw, shape = draw, group = 
   geom_line() + geom_linerange(aes(ymin = lo, ymax = hi), linetype = "solid") + geom_point() +
   scale_colour_manual(values = scales::hue_pal()(3)[c(1, 3)]) +
   scale_linetype_manual(values = c("solid", "dashed", "dotted")) + scale_shape_manual(values = c(16, 17, 15)) +
-  facet_grid(measure ~ pair, scales = "free_x", labeller = labeller(pair = label_parsed, measure = label_wrap_gen(24))) +
+  facet_grid(measure ~ pair, labeller = labeller(pair = label_parsed, measure = label_wrap_gen(24))) +
   scale_x_continuous(breaks = c(0, 3, 5, 10, 15), expand = expansion(add = 0.8)) + expand_limits(y = 0) +
   labs(x = "Injected sequences (k)", y = "Sequences", colour = "Setup", linetype = "Draw", shape = "Draw") +
   theme_bw() + theme(legend.position = "bottom", legend.box = "vertical", strip.text.x = element_text(size = 7.5))
@@ -419,7 +423,9 @@ cmp %>% left_join(real, by = "set") %>%
 With 10 true sequences left, recall is 3/3 at k = 3 and 5/5 at k = 5 in every draw and seed.
 The moved design with the same 10 left, `k10`, gives 8/10 and 0/10, and `k5` with 15 left gives 5/5.
 So taking the donor species from 15 to 10 at k = 5 changes nothing, and the number injected seems to matter more than how many true sequences remain.
-I cannot separate the two at k = 10 or more, since 20 donors do not allow ten injected plus ten deleted.
+The moved `k10` sets leave 10 donors as well, so they are the k = 10 end of the delete design, and recall there collapses.
+The delete design with 10 donors left therefore gives 5/5 up to k = 5 and 0-8/10 at k = 10; k = 6-9 would show where it breaks.
+More than 10 injected sequences cannot keep 10 donors, since there are only 20.
 The ratio of injected to remaining sequences is a candidate explanation that fits (0.3 for `k5`, 0.5 for `k5del5`, 1.0 for `k10`, 3.0 for `k15`), but nothing here tests it.
 
 Collateral flags in the delete sets are 4-6 at k = 3, within the noise floor, and 5-11 at k = 5.
@@ -669,7 +675,7 @@ Both can be judged with the metrics above on the injected sets and with the arch
   Which step explains the difference, and could the same difference explain the unflagged queries above?
 
 **Limits.**
-In the moved design k is mixed with the shrinking of the donor species; the delete design separates them, but only up to k = 5, because 20 donors leave room for at most 10 injected sequences plus 10 deleted ones.
+In the moved design k is mixed with the shrinking of the donor species; the delete design separates them, but with 20 donors it holds 10 true ones only up to k = 10, where deletion is no longer needed, and so nothing above k = 10 can be separated.
 One donor/recipient pair in each direction, two or three draws per size, one tree search per seed, no mutated copies, injection into a single taxon only, and a baseline of about 18 flags make small effects invisible.
 Counts of background flags do not transfer to large inputs; the mechanisms do.
 
