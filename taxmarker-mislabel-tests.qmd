@@ -242,7 +242,7 @@ p
 
 ```{r fig-background}
 #| label: fig-background
-#| fig-cap: "Flags other than the injected sequences, at lwr above 0.9, against k, with k = 0 as reference. Top: flags that are neither injected nor one of the three known mislabelled sequences. Bottom: how many of the three known mislabelled sequences are flagged. Bars span seeds 42-44; clustering + raxtax + sativa-epang is seed 42 and has no k = 0 run."
+#| fig-cap: "Flags other than the injected sequences, at lwr above 0.9, against k, with k = 0 as reference. Top: flags that are neither injected nor one of the three known mislabelled sequences. Bottom: how many of the three known mislabelled sequences are flagged. Bars span seeds 42-44; clustering + raxtax + sativa-epang is seed 42, first draw only."
 #| fig-width: 9
 #| fig-height: 7
 
@@ -290,7 +290,7 @@ p
 
 ```{r fig-collateral}
 #| label: fig-collateral
-#| fig-cap: "Newly flagged background sequences and lost baseline flags against k, sativa-epang alone at lwr above 0.9, compared with the same seed without injection. Bars span seeds 42-44 (seed 42 only for the last two pairs). The grey band is the range between two repeated runs without injection."
+#| fig-cap: "Newly flagged background sequences and lost baseline flags against k at lwr above 0.9, compared with the same setup and seed without injection. Bars span seeds 42-44 (seed 42 only for the last two pairs); clustering + raxtax + sativa-epang is seed 42, first draw only, compared with its own k = 0 run. The grey band is the range between two repeated sativa-epang runs without injection."
 #| fig-width: 12.5
 #| fig-height: 6.5
 
@@ -313,21 +313,29 @@ noise <- m %>% filter(grepl(" vs ", set)) %>%
   summarise(across(c(collateral, lost_baseline), list(lo = min, hi = max))) %>%
   pivot_longer(everything(), names_to = c("measure", ".value"), names_pattern = "(collateral|lost_baseline)_(.*)")
 lab <- c(collateral = "Newly flagged background sequences", lost_baseline = "Baseline flags lost")
+setups <- c("sativa-epang alone", "clustering + raxtax + sativa-epang")
 d <- m %>% filter(!grepl(" vs ", set)) %>%
   group_by(set) %>%
   summarise(across(c(collateral, lost_baseline), list(m = mean, lo = min, hi = max)), .groups = "drop") %>%
+  mutate(setup = setups[1])
+full <- read_tsv("data/full_flags.tsv", show_col_types = FALSE) %>%
+  filter(set != "k0") %>%
+  transmute(set, setup = setups[2], across(c(collateral, lost_baseline), list(m = identity, lo = identity, hi = identity)))
+d <- bind_rows(d, full) %>%
   left_join(setname(unique(.$set)), by = "set") %>%
   pivot_longer(c(starts_with("collateral"), starts_with("lost_baseline")), names_to = c("measure", ".value"), names_pattern = "(collateral|lost_baseline)_(.*)") %>%
-  mutate(pair = factor(pair, pair_levels), measure = factor(measure, names(lab), lab), x = k + (as.integer(draw) - 2) * 0.12)
+  mutate(pair = factor(pair, pair_levels), measure = factor(measure, names(lab), lab), setup = factor(setup, setups),
+         x = k + (as.integer(setup) - 1.5) * 0.4 + (as.integer(draw) - 2) * 0.12)
 noise <- mutate(noise, measure = factor(measure, names(lab), lab))
-p <- ggplot(d, aes(x, m, linetype = draw, shape = draw, group = draw)) +
+p <- ggplot(d, aes(x, m, colour = setup, linetype = draw, shape = draw, group = interaction(setup, draw))) +
   geom_rect(data = noise, aes(ymin = lo, ymax = hi), xmin = -Inf, xmax = Inf, inherit.aes = FALSE, fill = "grey80", alpha = 0.6) +
   geom_line() + geom_linerange(aes(ymin = lo, ymax = hi), linetype = "solid") + geom_point() +
+  scale_colour_manual(values = scales::hue_pal()(3)[c(1, 3)]) +
   scale_linetype_manual(values = c("solid", "dashed", "dotted")) + scale_shape_manual(values = c(16, 17, 15)) +
   facet_grid(measure ~ pair, labeller = labeller(pair = label_parsed, measure = label_wrap_gen(24))) +
   scale_x_continuous(breaks = c(5, 10, 15)) + expand_limits(y = 0) +
-  labs(x = "Injected sequences (k)", y = "Sequences", linetype = "Draw", shape = "Draw") +
-  theme_bw() + theme(legend.position = "bottom", strip.text.x = element_text(size = 7.5))
+  labs(x = "Injected sequences (k)", y = "Sequences", colour = "Setup", linetype = "Draw", shape = "Draw") +
+  theme_bw() + theme(legend.position = "bottom", legend.box = "vertical", strip.text.x = element_text(size = 7.5))
 p
 ```
 

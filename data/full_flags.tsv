@@ -1,6 +1,7 @@
-set	injected	injected_flagged	real_flagged	background
-k5	5	0	0	31
-k10	10	0	0	26
-ecsa5	5	4	1	18
-ecsa10	10	0	1	26
-ecsa15	15	0	1	26
+set	injected	injected_flagged	real_flagged	background	collateral	lost_baseline
+k0	0	0	1	23	0	0
+k5	5	0	0	31	11	4
+k10	10	0	0	26	6	4
+ecsa5	5	4	1	18	2	7
+ecsa10	10	0	1	26	10	7
+ecsa15	15	0	1	26	7	4
