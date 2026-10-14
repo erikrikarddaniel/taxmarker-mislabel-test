@@ -40,7 +40,7 @@ library(grateful)
 - 2026-10-09: first draft, written from the analysis session of 2026-10-07 to 2026-10-09.
 - 2026-10-09: added the extra injection draws (`k5d2`, `k5d3`, `k10d2`, `k10d3`, `k15d1`, `k15d2`), the swapped pair `ecsa5/10/15` and the full-pipeline runs on the swapped pair.
 
-- 2026-10-14: added the delete design (`--drop`; `k3del7`, `k5del5`, `k0del10`), the full-pipeline `k0` and the full-pipeline points in the collateral figure.
+- 2026-10-14: added the delete design (`--drop`; `k3del7`, `k5del5`, `k0del10`) as an extra panel in the three figures, the full-pipeline `k0` and the full-pipeline points in the collateral figure.
 
 # Summary
 
@@ -203,32 +203,52 @@ In `k10d2` and `k10d3` the injected sequences are not listed in `mislabels.tsv` 
 At k = 15 both draws give 0/15, and so does the swapped pair at k = 15; the swapped pair gives 5/5 at k = 5 and 2/10 at k = 10.
 I have not examined why the draws differ.
 
-```{r fig-recall}
-#| label: fig-recall
-#| fig-cap: "Fraction of injected sequences flagged against k. Lines join the draws of one setup; the bar on sativa-epang alone spans seeds 42-44. Clustering + raxtax + sativa-epang is seed 42 and first draw only, and counts only injected sequences that are themselves flagged."
-#| fig-width: 9
-#| fig-height: 6.5
+```{r plot-helpers}
+#| label: plot-helpers
+#| include: false
 
+sa <- "italic('Staphylococcus aureus')"
+ec <- "italic('Escherichia coli')"
+delete_pair <- paste0("atop(", sa, "~'into'~", ec, ", '(donors kept at 10)')")
 pair_levels <- c(
-  "italic('Staphylococcus aureus')~'into'~italic('Escherichia coli')",
-  "italic('Escherichia coli')~'into'~italic('Staphylococcus aureus')",
-  "italic('Staphylococcus aureus')~'into'~italic('Escherichia marmotae')",
-  "italic('Staphylococcus aureus')~'into'~italic('Asaia')~'sp037151935'")
+  paste0(sa, "~'into'~", ec),
+  delete_pair,
+  paste0(ec, "~'into'~", sa),
+  paste0(sa, "~'into'~italic('Escherichia marmotae')"),
+  paste0(sa, "~'into'~italic('Asaia')~'sp037151935'"))
 setname <- function(x) tibble(
   set = x,
   pair = case_when(
-    grepl("^ecsa", x) ~ "italic('Escherichia coli')~'into'~italic('Staphylococcus aureus')",
-    grepl("^asaia", x) ~ "italic('Staphylococcus aureus')~'into'~italic('Asaia')~'sp037151935'",
-    grepl("^marm", x) ~ "italic('Staphylococcus aureus')~'into'~italic('Escherichia marmotae')",
-    TRUE ~ "italic('Staphylococcus aureus')~'into'~italic('Escherichia coli')"),
+    grepl("del", x) ~ delete_pair,
+    grepl("^ecsa", x) ~ paste0(ec, "~'into'~", sa),
+    grepl("^asaia", x) ~ paste0(sa, "~'into'~italic('Asaia')~'sp037151935'"),
+    grepl("^marm", x) ~ paste0(sa, "~'into'~italic('Escherichia marmotae')"),
+    TRUE ~ paste0(sa, "~'into'~", ec)),
   k = as.integer(sub("^[a-z]+([0-9]+).*", "\\1", x)),
   draw = factor(case_when(grepl("d2$", x) ~ 2L, grepl("d3$", x) ~ 3L, TRUE ~ 1L)))
+# k0del10 is the k = 0 point of every draw in the delete design
+spread_k0del <- function(d) {
+  k0 <- d %>% filter(set == "k0del10") %>% select(-draw) %>% cross_join(tibble(draw = factor(1:3)))
+  bind_rows(filter(d, set != "k0del10"), k0)
+}
+delete_metrics <- read_tsv("data/delete_metrics.tsv", show_col_types = FALSE) %>% mutate(seed = as.character(seed))
+delete_consensus <- read_tsv("data/delete_consensus.tsv", show_col_types = FALSE)
+```
+
+```{r fig-recall}
+#| label: fig-recall
+#| fig-cap: "Fraction of injected sequences flagged against k. Lines join the draws of one setup; the bar on sativa-epang alone spans seeds 42-44. Clustering + raxtax + sativa-epang is seed 42 and first draw only, and counts only injected sequences that are themselves flagged. The second panel is the delete design: 10 true donors are kept whatever k is (draws 1-3, sativa-epang only)."
+#| fig-width: 9
+#| fig-height: 6.5
+
 sativa <- read_tsv("data/metrics.tsv", show_col_types = FALSE) %>%
   filter(!grepl(" vs ", set)) %>%
+  bind_rows(filter(delete_metrics, injected > 0)) %>%
   mutate(recall = recalled / injected) %>%
   group_by(set) %>%
   summarise(setup = "sativa-epang alone", lo = min(recall), hi = max(recall), recall = mean(recall), .groups = "drop")
 consensus <- read_tsv("data/consensus.tsv", show_col_types = FALSE) %>%
+  bind_rows(delete_consensus) %>%
   filter(lwr == 0.9, rule == "all", injected > 0) %>%
   transmute(set, setup = "sativa-epang, all 3 seeds agree", recall = injected_found / injected, lo = recall, hi = recall)
 full <- read_tsv("data/full.tsv", show_col_types = FALSE) %>%
@@ -242,8 +262,8 @@ d <- mutate(d, x = k + c(-0.3, 0, 0.3)[as.integer(setup)] + (as.integer(draw) - 
 p <- ggplot(d, aes(x, recall, colour = setup, linetype = draw, shape = draw, group = interaction(setup, draw))) +
   geom_line() + geom_linerange(aes(ymin = lo, ymax = hi), linetype = "solid") +
   geom_point() + scale_linetype_manual(values = c("solid", "dashed", "dotted")) +
-  facet_wrap(~pair, labeller = label_parsed) +
-  scale_x_continuous(breaks = c(5, 10, 15)) + scale_y_continuous(limits = c(0, 1), labels = scales::percent) +
+  facet_wrap(~pair, labeller = label_parsed, scales = "free_x") +
+  scale_x_continuous(breaks = c(3, 5, 10, 15), expand = expansion(add = 0.8)) + scale_y_continuous(limits = c(0, 1), labels = scales::percent) +
   scale_shape_manual(values = c(16, 17, 15)) + labs(x = "Injected sequences (k)", y = "Injected sequences flagged", colour = "Setup", linetype = "Draw", shape = "Draw") +
   theme_bw() + theme(legend.position = "bottom", legend.box = "vertical")
 
@@ -252,26 +272,12 @@ p
 
 ```{r fig-background}
 #| label: fig-background
-#| fig-cap: "Flags other than the injected sequences, at lwr above 0.9, against k, with k = 0 as reference. Top: flags that are neither injected nor one of the three known mislabelled sequences. Bottom: how many of the three known mislabelled sequences are flagged. Bars span seeds 42-44; clustering + raxtax + sativa-epang is seed 42, first draw only."
+#| fig-cap: "Flags other than the injected sequences, at lwr above 0.9, against k, with k = 0 as reference. Top: flags that are neither injected nor one of the three known mislabelled sequences. Bottom: how many of the three known mislabelled sequences are flagged. Bars span seeds 42-44; clustering + raxtax + sativa-epang is seed 42, first draw only. In the delete design (second column) the k = 0 point is `k0del10`, ten donors deleted and nothing injected."
 #| fig-width: 9
 #| fig-height: 7
 
-pair_levels <- c(
-  "italic('Staphylococcus aureus')~'into'~italic('Escherichia coli')",
-  "italic('Escherichia coli')~'into'~italic('Staphylococcus aureus')",
-  "italic('Staphylococcus aureus')~'into'~italic('Escherichia marmotae')",
-  "italic('Staphylococcus aureus')~'into'~italic('Asaia')~'sp037151935'")
-setname <- function(x) tibble(
-  set = x,
-  pair = case_when(
-    grepl("^ecsa", x) ~ "italic('Escherichia coli')~'into'~italic('Staphylococcus aureus')",
-    grepl("^asaia", x) ~ "italic('Staphylococcus aureus')~'into'~italic('Asaia')~'sp037151935'",
-    grepl("^marm", x) ~ "italic('Staphylococcus aureus')~'into'~italic('Escherichia marmotae')",
-    TRUE ~ "italic('Staphylococcus aureus')~'into'~italic('Escherichia coli')"),
-  k = as.integer(sub("^[a-z]+([0-9]+).*", "\\1", x)),
-  draw = factor(case_when(grepl("d2$", x) ~ 2L, grepl("d3$", x) ~ 3L, TRUE ~ 1L)))
 setups <- c("sativa-epang alone", "sativa-epang, all 3 seeds agree", "clustering + raxtax + sativa-epang")
-cons <- read_tsv("data/consensus.tsv", show_col_types = FALSE) %>% filter(lwr == 0.9, rule == "all" | grepl("^seed", rule)) %>%
+cons <- read_tsv("data/consensus.tsv", show_col_types = FALSE) %>% bind_rows(delete_consensus) %>% filter(lwr == 0.9, rule == "all" | grepl("^seed", rule)) %>%
   mutate(setup = ifelse(rule == "all", setups[2], setups[1])) %>%
   group_by(set, setup) %>%
   summarise(across(c(background, real_found), list(m = mean, lo = min, hi = max)), .groups = "drop")
@@ -281,8 +287,8 @@ full <- read_tsv("data/full_flags.tsv", show_col_types = FALSE) %>%
 d <- bind_rows(cons, full) %>% left_join(setname(unique(.$set)), by = "set")
 k0 <- filter(d, set == "k0") %>% select(-pair, -draw, -k)
 d <- filter(d, set != "k0")
-k0 <- d %>% distinct(pair, draw) %>% cross_join(k0) %>% mutate(k = 0L)
-d <- bind_rows(d, k0) %>%
+k0 <- d %>% filter(pair != delete_pair) %>% distinct(pair, draw) %>% cross_join(k0) %>% mutate(k = 0L)
+d <- bind_rows(spread_k0del(d), k0) %>%
   pivot_longer(c(starts_with("background"), starts_with("real_found")), names_to = c("measure", ".value"), names_pattern = "(background|real_found)_(.*)") %>%
   mutate(setup = factor(setup, setups), pair = factor(pair, pair_levels),
          measure = factor(measure, c("background", "real_found"), c("Flags that are neither injected nor known", "Known mislabelled flagged (of 3)")),
@@ -290,8 +296,8 @@ d <- bind_rows(d, k0) %>%
 p <- ggplot(d, aes(x, m, colour = setup, linetype = draw, shape = draw, group = interaction(setup, draw))) +
   geom_line() + geom_linerange(aes(ymin = lo, ymax = hi), linetype = "solid") + geom_point() +
   scale_linetype_manual(values = c("solid", "dashed", "dotted")) + scale_shape_manual(values = c(16, 17, 15)) +
-  facet_grid(measure ~ pair, scales = "free_y", labeller = labeller(pair = label_parsed, measure = label_wrap_gen(24))) +
-  scale_x_continuous(breaks = c(0, 5, 10, 15)) + expand_limits(y = 0) +
+  facet_grid(measure ~ pair, scales = "free", labeller = labeller(pair = label_parsed, measure = label_wrap_gen(24))) +
+  scale_x_continuous(breaks = c(0, 3, 5, 10, 15), expand = expansion(add = 0.8)) + expand_limits(y = 0) +
   labs(x = "Injected sequences (k)", y = NULL, colour = "Setup", linetype = "Draw", shape = "Draw") +
   theme_bw() + theme(legend.position = "bottom", legend.box = "vertical")
 
@@ -300,24 +306,10 @@ p
 
 ```{r fig-collateral}
 #| label: fig-collateral
-#| fig-cap: "Newly flagged background sequences and lost baseline flags against k at lwr above 0.9, compared with the same setup and seed without injection. Bars span seeds 42-44 (seed 42 only for the last two pairs); clustering + raxtax + sativa-epang is seed 42, first draw only, compared with its own k = 0 run. The grey band is the range between two repeated sativa-epang runs without injection."
-#| fig-width: 12.5
+#| fig-cap: "Newly flagged background sequences and lost baseline flags against k at lwr above 0.9, compared with the same setup and seed without injection. Bars span seeds 42-44 (seed 42 only for the last two pairs); clustering + raxtax + sativa-epang is seed 42, first draw only, compared with its own k = 0 run. The grey band is the range between two repeated sativa-epang runs without injection. The second column is the delete design; its k = 0 point is `k0del10`, ten donors deleted and nothing injected."
+#| fig-width: 15
 #| fig-height: 6.5
 
-pair_levels <- c(
-  "italic('Staphylococcus aureus')~'into'~italic('Escherichia coli')",
-  "italic('Escherichia coli')~'into'~italic('Staphylococcus aureus')",
-  "italic('Staphylococcus aureus')~'into'~italic('Escherichia marmotae')",
-  "italic('Staphylococcus aureus')~'into'~italic('Asaia')~'sp037151935'")
-setname <- function(x) tibble(
-  set = x,
-  pair = case_when(
-    grepl("^ecsa", x) ~ "italic('Escherichia coli')~'into'~italic('Staphylococcus aureus')",
-    grepl("^asaia", x) ~ "italic('Staphylococcus aureus')~'into'~italic('Asaia')~'sp037151935'",
-    grepl("^marm", x) ~ "italic('Staphylococcus aureus')~'into'~italic('Escherichia marmotae')",
-    TRUE ~ "italic('Staphylococcus aureus')~'into'~italic('Escherichia coli')"),
-  k = as.integer(sub("^[a-z]+([0-9]+).*", "\\1", x)),
-  draw = factor(case_when(grepl("d2$", x) ~ 2L, grepl("d3$", x) ~ 3L, TRUE ~ 1L)))
 m <- read_tsv("data/metrics.tsv", show_col_types = FALSE)
 noise <- m %>% filter(grepl(" vs ", set)) %>%
   summarise(across(c(collateral, lost_baseline), list(lo = min, hi = max))) %>%
@@ -325,6 +317,7 @@ noise <- m %>% filter(grepl(" vs ", set)) %>%
 lab <- c(collateral = "Newly flagged background sequences", lost_baseline = "Baseline flags lost")
 setups <- c("sativa-epang alone", "clustering + raxtax + sativa-epang")
 d <- m %>% filter(!grepl(" vs ", set)) %>%
+  bind_rows(delete_metrics) %>%
   group_by(set) %>%
   summarise(across(c(collateral, lost_baseline), list(m = mean, lo = min, hi = max)), .groups = "drop") %>%
   mutate(setup = setups[1])
@@ -333,6 +326,7 @@ full <- read_tsv("data/full_flags.tsv", show_col_types = FALSE) %>%
   transmute(set, setup = setups[2], across(c(collateral, lost_baseline), list(m = identity, lo = identity, hi = identity)))
 d <- bind_rows(d, full) %>%
   left_join(setname(unique(.$set)), by = "set") %>%
+  spread_k0del() %>%
   pivot_longer(c(starts_with("collateral"), starts_with("lost_baseline")), names_to = c("measure", ".value"), names_pattern = "(collateral|lost_baseline)_(.*)") %>%
   mutate(pair = factor(pair, pair_levels), measure = factor(measure, names(lab), lab), setup = factor(setup, setups),
          x = k + (as.integer(setup) - 1.5) * 0.4 + (as.integer(draw) - 2) * 0.12)
@@ -342,8 +336,8 @@ p <- ggplot(d, aes(x, m, colour = setup, linetype = draw, shape = draw, group = 
   geom_line() + geom_linerange(aes(ymin = lo, ymax = hi), linetype = "solid") + geom_point() +
   scale_colour_manual(values = scales::hue_pal()(3)[c(1, 3)]) +
   scale_linetype_manual(values = c("solid", "dashed", "dotted")) + scale_shape_manual(values = c(16, 17, 15)) +
-  facet_grid(measure ~ pair, labeller = labeller(pair = label_parsed, measure = label_wrap_gen(24))) +
-  scale_x_continuous(breaks = c(5, 10, 15)) + expand_limits(y = 0) +
+  facet_grid(measure ~ pair, scales = "free_x", labeller = labeller(pair = label_parsed, measure = label_wrap_gen(24))) +
+  scale_x_continuous(breaks = c(0, 3, 5, 10, 15), expand = expansion(add = 0.8)) + expand_limits(y = 0) +
   labs(x = "Injected sequences (k)", y = "Sequences", colour = "Setup", linetype = "Draw", shape = "Draw") +
   theme_bw() + theme(legend.position = "bottom", legend.box = "vertical", strip.text.x = element_text(size = 7.5))
 p
