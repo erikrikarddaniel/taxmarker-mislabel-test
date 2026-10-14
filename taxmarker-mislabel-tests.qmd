@@ -40,6 +40,8 @@ library(grateful)
 - 2026-10-09: first draft, written from the analysis session of 2026-10-07 to 2026-10-09.
 - 2026-10-09: added the extra injection draws (`k5d2`, `k5d3`, `k10d2`, `k10d3`, `k15d1`, `k15d2`), the swapped pair `ecsa5/10/15` and the full-pipeline runs on the swapped pair.
 
+- 2026-10-14: added the delete design (`--drop`; `k3del7`, `k5del5`, `k0del10`), the full-pipeline `k0` and the full-pipeline points in the collateral figure.
+
 # Summary
 
 nf-core/taxmarker is a Nextflow pipeline that identifies mislabelled sequences, that is, sequences whose declared taxonomy disagrees with the sequence itself.
@@ -106,6 +108,12 @@ The maximum k is set by the number of donors (20).
 `dN` in a name is the number of the draw: sets without suffix (`k5`, `k10`) are the first draw, and `d2`, `d3` are independent draws (different donor sequences) of the same size.
 Every injected set comes with a truth file listing the injected identifiers.
 
+Moving sequences confounds k with the shrinking of the donor species, so a second design keeps the donor species fixed in size.
+`--drop n` draws k + n donors with the same seed, injects the first k and deletes the other n (their identifiers are in a `.dropped` file).
+With n chosen so that k + n = 10, every delete set leaves 10 true *S. aureus* sequences, whatever k is.
+The sets are nested: the k + n donors are the same as in the moved set of that size and seed.
+Deleted sequences that were flagged at `k0` do not count as lost baseline flags.
+
 | Name | Donor | Recipient | k | Draws |
 |---|---|---|---|---|
 | `k5`, `k10` | *S. aureus* | *E. coli* | 5, 10 | seed 1 |
@@ -113,6 +121,8 @@ Every injected set comes with a truth file listing the injected identifiers.
 | `k15d1`, `k15d2` | *S. aureus* | *E. coli* | 15 | two draws |
 | `asaia5/10`, `marm5/10` | *S. aureus* | *Asaia* sp037151935, *E. marmotae* | 5, 10 | seed 1 |
 | `ecsa5/10/15` | *E. coli* | *S. aureus* | 5, 10, 15 | seed 1 |
+| `k3del7`, `k5del5` | *S. aureus* | *E. coli* | 3, 5 | 3 draws; 7 and 5 other donors deleted |
+| `k0del10` | *S. aureus* | *E. coli* | 0 | 10 donors deleted, nothing injected |
 
 : Injected sets. {#tbl-sets}
 
@@ -385,6 +395,43 @@ tribble(
   kable()
 ```
 
+### Donor depletion or number injected?
+
+In the moved design the donor species shrinks by k, so a high k means both many injected sequences and few remaining true ones.
+The delete sets keep 10 true *S. aureus* sequences whatever k is, and `k0del10` is the control with deletion only.
+
+```{r tbl-delete}
+#| label: tbl-delete
+#| tbl-cap: Moved and delete designs at lwr > 0.9, sativa-epang alone, ranges over seeds 42-44 and over the three draws. Remaining = true S. aureus sequences left in the donor species. Known mislabelled = how many of the three flagged in all three seeds.
+
+dm <- read_tsv("data/delete_metrics.tsv", show_col_types = FALSE) %>% mutate(seed = as.character(seed))
+dc <- read_tsv("data/delete_consensus.tsv", show_col_types = FALSE) %>% filter(lwr == 0.9, rule == "all")
+cmp <- bind_rows(dm, filter(metrics, set %in% c("k5", "k5d2", "k5d3", "k10", "k10d2", "k10d3"))) %>%
+  mutate(design = ifelse(grepl("del", set), "delete", "moved"),
+         k = injected,
+         remaining = ifelse(design == "delete", 10, 20 - k))
+real <- bind_rows(dc, read_tsv("data/consensus.tsv", show_col_types = FALSE) %>% filter(lwr == 0.9, rule == "all", set %in% c("k5", "k5d2", "k5d3", "k10", "k10d2", "k10d3"))) %>%
+  group_by(set) %>% summarise(real_found = first(real_found))
+cmp %>% left_join(real, by = "set") %>%
+  group_by(design, k, remaining) %>%
+  summarise(sets = n_distinct(set),
+            recall = paste0(rng(recalled), "/", first(injected)),
+            collateral = rng(collateral), `lost baseline` = rng(lost_baseline),
+            `known mislabelled` = rng(real_found), .groups = "drop") %>%
+  arrange(design, k) %>%
+  kable()
+```
+
+With 10 true sequences left, recall is 3/3 at k = 3 and 5/5 at k = 5 in every draw and seed.
+The moved design with the same 10 left, `k10`, gives 8/10 and 0/10, and `k5` with 15 left gives 5/5.
+So taking the donor species from 15 to 10 at k = 5 changes nothing, and the number injected seems to matter more than how many true sequences remain.
+I cannot separate the two at k = 10 or more, since 20 donors do not allow ten injected plus ten deleted.
+The ratio of injected to remaining sequences is a candidate explanation that fits (0.3 for `k5`, 0.5 for `k5del5`, 1.0 for `k10`, 3.0 for `k15`), but nothing here tests it.
+
+Collateral flags in the delete sets are 4-6 at k = 3, within the noise floor, and 5-11 at k = 5.
+The control `k0del10` gives 5-11 as well, so deleting ten sequences alone moves as many flags as injecting five; the part of the collateral flags that injection causes is therefore not separable from deletion at this size.
+All three known mislabelled sequences, `SQRB` among them, behave as at `k0`: the same one is flagged in every delete set.
+
 ## Theme 1b: keeping mislabelled sequences from outvoting true sequences
 
 ### The full pipeline does not flag them
@@ -628,6 +675,7 @@ Both can be judged with the metrics above on the injected sets and with the arch
   Which step explains the difference, and could the same difference explain the unflagged queries above?
 
 **Limits.**
+In the moved design k is mixed with the shrinking of the donor species; the delete design separates them, but only up to k = 5, because 20 donors leave room for at most 10 injected sequences plus 10 deleted ones.
 One donor/recipient pair in each direction, two or three draws per size, one tree search per seed, no mutated copies, injection into a single taxon only, and a baseline of about 18 flags make small effects invisible.
 Counts of background flags do not transfer to large inputs; the mechanisms do.
 
