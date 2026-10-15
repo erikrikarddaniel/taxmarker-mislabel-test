@@ -42,7 +42,7 @@ library(grateful)
 
 - 2026-10-14: added the delete design (`--drop`; `k3del7`, `k5del5`, `k0del10`) as an extra panel in the three figures, the full-pipeline `k0` and the full-pipeline points in the collateral figure.
 - 2026-10-15: added `k7del3`, `k8del2` and `k9del1` (seed 42, three draws each) to the delete design, and the two clustering setups (with and without raxtax) on the first draw of the delete sets.
-- 2026-10-16: added the three setups on MislabelBench cells (`scripts/run_mb.sh`, `scripts/mb_cells.py`), and the share of wrong-label relatives (`scripts/relatives.py`), a cross-check with the MislabelBench scorer (`scripts/mb_score.py`) and a discussion of MislabelBench [@mislabelbench].
+- 2026-10-16: added the three setups on MislabelBench cells (see `mislabelbench-cells.qmd`), and the share of wrong-label relatives (`scripts/relatives.py`), a cross-check with the MislabelBench scorer (`scripts/mb_score.py`) and a discussion of MislabelBench [@mislabelbench].
 
 # Summary
 
@@ -540,36 +540,9 @@ Clustering therefore removes the signal in the delete design as well, even where
 
 ### The setups on MislabelBench cells
 
-To see whether the clustering result depends on the injection design, the three setups (sativa-epang alone, clustering with raxtax off, and the pipeline defaults) were run on cells of the MislabelBench grid [@mislabelbench]: family distance, 5% of the 2,023 archaeal sequences relabelled, k = 1, 2, 3, 5 and 10 sequences per wrong label, seed 1, plus the un-injected base set.
-The input is its alignment and its taxonomy, with `--fast --seed 42` and `GTR+FO+I+R10` as elsewhere in this report (`scripts/run_mb.sh`, run on a 128-core server; results scored with `scripts/mb_cells.py`).
-Here 101-110 sequences are injected in groups of k, each group with its own donor and recipient taxon, and no donors are deleted.
-Flagged counts every method, so raxtax flags count as well; testable = injected sequences that reach sativa-epang after clustering and raxtax; expanded = injected sequences that are flagged or share a cluster with a flagged representative.
-Added = flags on non-injected sequences that are not flagged at the same setup's base run.
-
-```{r tbl-mb-cells}
-#| label: tbl-mb-cells
-#| tbl-cap: The three setups on MislabelBench cells (family distance, 5%, seed 1; seed 42, lwr > 0.9). Flagged and expanded are injected sequences; added counts flags on other sequences. Expansion adds every member of the cluster of a flagged representative.
-
-read_tsv("data/mb_cells.tsv", show_col_types = FALSE) %>%
-  filter(cell_k > 0) %>%
-  mutate(setup = factor(setup, c("alone", "cluster", "cluster_raxtax"), c("sativa-epang alone", "cluster", "cluster + raxtax"))) %>%
-  transmute(setup, k = cell_k, injected, testable, flagged, `flagged by sativa-epang` = flagged_sativa,
-            expanded = flagged_expanded, added, `added, expanded` = added_expanded) %>%
-  arrange(setup, k) %>%
-  kable()
-```
-
-sativa-epang alone flags 86, 73, 43, 17 and 21 of the injected sequences at k = 1, 2, 3, 5 and 10 (85%, 72%, 42%, 16% and 19%), a fall with k of the same shape as the one in the single-group sets, and close to the recalls MislabelBench reports for sativa-epang at this distance and rate (0.96, 0.67, 0.49, 0.23 and 0.20).
-With clustering in front, only the 28 to 101 representatives are placed, and 18 to 81 of the injected sequences are flagged, fewer than alone at k = 2 and 3 and the same at k = 5 and 10.
-Among the representatives the flagged share is 73% at k = 2, 55% at k = 3, 36% at k = 5 and 64% at k = 10.
-Counting the cluster-mates of a flagged representative as flagged gives 82, 76, 70, 67 and 80 injected sequences flagged, 64-73% at k >= 3 against 16-42% alone.
-The price is on the other sequences: expansion also flags all members of flagged clusters of untouched sequences, and the added flags go from 2-18 to 58-151.
-Raxtax flags 94 of 101 at k = 1, but only 9 of those are sativa-epang flags; it removes flagged sequences from the tree before the placement, and the added flags are 8-43 without expansion, against 2-18 for clustering alone.
-
-So the loss of injected sequences with clustering in the single-group sets does not reappear here, where each wrong label is carried by one group among many recipients.
-Whether that is because the groups are spread over many recipients, or because the donors here are not the near-identical *S. aureus* sequences of the delete design, has not been tested.
-It also means that the clustering result depends on how the injected sequences are spread, which the single-group design cannot show.
-Only one cell per k and one run per cell are available, so these are single observations.
+The three setups were also run on cells of the MislabelBench grid [@mislabelbench], where many wrong-label groups are present at once.
+Clustering does not remove the signal there, unlike in the single-group sets above.
+The results are in a separate report, `mislabelbench-cells.qmd`.
 
 ## Theme 1b: keeping mislabelled sequences from outvoting true sequences
 
@@ -812,7 +785,7 @@ Its grid relabels 1% or 5% of a database of 2,023 archaeal 16S sequences in grou
 Recall falls with k there too (0.94 at k = 1, 0.13 at k = 10), and it reports the share of wrong-label relatives, not k, as the better predictor.
 Our data agree with that as an ordering (full recall up to a share of 0.50, none at 0.77) but not between draws of the same k, where one wrong-label group in a bacterial reference is enough to lose all injected sequences or none.
 Our single-group sets reach full recall at k = 3-8, where the benchmark's family-distance cells at 5% give 0.49 (k = 3) and 0.23 (k = 5); one possible reason is that with a single group the wrong label has no competition from other groups, which has not been tested.
-MislabelBench does not test clustering or raxtax in front of sativa-epang; here they were run on its cells too (see the results), and the outcome differs from the single-group sets.
+MislabelBench does not test clustering or raxtax in front of sativa-epang; here they were run on its cells too (see `mislabelbench-cells.qmd`), and the outcome differs from the single-group sets.
 The benchmark's scorer reproduces our recall on the same sets.
 
 **Questions for the sativa-epang authors.**

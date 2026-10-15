@@ -1,0 +1,90 @@
+---
+title: "taxmarker pre-filters on MislabelBench cells"
+author: "matricaria.suaveolens@gmail.com"
+date: "`r format(Sys.time(), '%Y-%m-%d')`"
+format:
+  html:
+    code-fold: true
+    toc: true
+    embed-resources: true
+bibliography:
+  - bibliography.bib
+  - tools.bib
+---
+
+```{r setup}
+#| label: setup
+#| echo: false
+
+knitr::opts_chunk$set(echo = TRUE, fig.path='figures/mb-', fig.width = 10)
+ggplot2::theme_set(ggplot2::theme_bw())
+```
+
+```{r libraries}
+#| label: libraries
+#| message: false
+#| include: false
+
+library(dplyr, warn.conflicts = FALSE)
+library(knitr)
+library(readr)
+```
+
+# Version history
+
+- 2026-10-16: moved here from `taxmarker-mislabel-tests.qmd`: the three setups on MislabelBench cells (family distance, 5%, seed 1).
+
+# Summary
+
+This report runs nf-core/taxmarker on cells of the MislabelBench grid [@mislabelbench], a benchmark that relabels 1% or 5% of 2,023 archaeal 16S sequences in groups of k sharing one wrong label.
+It complements `taxmarker-mislabel-tests.qmd`, where one wrong-label group is injected into a bacterial reference.
+A sequence the pipeline reports as mislabelled is said to be *flagged*.
+
+- With sativa-epang alone, recall of injected sequences falls with k like the figures MislabelBench reports for sativa-epang.
+- With clustering in front, the injected sequences that share a cluster with a flagged representative are 64-73% of all injected at k >= 3, against 16-42% for sativa-epang alone.
+  That is the opposite of the single-group sets, where clustering lost all injected sequences.
+- The price is on the other sequences: expansion adds 58-151 flags, and the share of flags that are injected is lower than for sativa-epang alone at k <= 3 (0.22-0.32 against 0.41-0.63) and higher at k >= 5 (0.25-0.38 against 0.18-0.27).
+- Raxtax flags 94 of 101 injected sequences at k = 1, but only 9 of those are sativa-epang flags.
+
+# Results
+
+## The three setups on one cell per k
+
+To see whether the clustering result depends on the injection design, the three setups (sativa-epang alone, clustering with raxtax off, and the pipeline defaults) were run on cells of the MislabelBench grid [@mislabelbench]: family distance, 5% of the 2,023 archaeal sequences relabelled, k = 1, 2, 3, 5 and 10 sequences per wrong label, seed 1, plus the un-injected base set.
+The input is its alignment and its taxonomy, with `--fast --seed 42` and `GTR+FO+I+R10` as elsewhere in this report (`scripts/run_mb.sh`, run on a 128-core server; results scored with `scripts/mb_cells.py`).
+Here 101-110 sequences are injected in groups of k, each group with its own donor and recipient taxon, and no donors are deleted.
+Flagged counts every method, so raxtax flags count as well; testable = injected sequences that reach sativa-epang after clustering and raxtax; expanded = injected sequences that are flagged or share a cluster with a flagged representative.
+Added = flags on non-injected sequences that are not flagged at the same setup's base run.
+
+```{r tbl-mb-cells}
+#| label: tbl-mb-cells
+#| tbl-cap: The three setups on MislabelBench cells (family distance, 5%, seed 1; seed 42, lwr > 0.9). Flagged and expanded are injected sequences; added counts flags on other sequences; injected share of flags is flagged injected sequences over all flags, which include the flags of the un-injected base set. Expansion adds every member of the cluster of a flagged representative.
+
+read_tsv("data/mb_cells.tsv", show_col_types = FALSE) %>%
+  filter(cell_k > 0) %>%
+  mutate(setup = factor(setup, c("alone", "cluster", "cluster_raxtax"), c("sativa-epang alone", "cluster", "cluster + raxtax"))) %>%
+  transmute(setup, k = cell_k, injected, testable, flagged, `flagged by sativa-epang` = flagged_sativa,
+            expanded = flagged_expanded, added, `added, expanded` = added_expanded,
+            `injected share of flags` = round(flagged / (flagged + other_flags), 2),
+            `injected share, expanded` = round(flagged_expanded / (flagged_expanded + other_expanded), 2)) %>%
+  arrange(setup, k) %>%
+  kable()
+```
+
+sativa-epang alone flags 86, 73, 43, 17 and 21 of the injected sequences at k = 1, 2, 3, 5 and 10 (85%, 72%, 42%, 16% and 19%), a fall with k of the same shape as the one in the single-group sets, and close to the recalls MislabelBench reports for sativa-epang at this distance and rate (0.96, 0.67, 0.49, 0.23 and 0.20).
+With clustering in front, only the 28 to 101 representatives are placed, and 18 to 81 of the injected sequences are flagged, fewer than alone at k = 2 and 3 and the same at k = 5 and 10.
+Among the representatives the flagged share is 73% at k = 2, 55% at k = 3, 36% at k = 5 and 64% at k = 10.
+Counting the cluster-mates of a flagged representative as flagged gives 82, 76, 70, 67 and 80 injected sequences flagged, 64-73% at k >= 3 against 16-42% alone.
+The price is on the other sequences: expansion also flags all members of flagged clusters of untouched sequences, and the added flags go from 2-18 to 58-151.
+Raxtax flags 94 of 101 at k = 1, but only 9 of those are sativa-epang flags; it removes flagged sequences from the tree before the placement, and the added flags are 8-43 without expansion, against 2-18 for clustering alone.
+
+So the loss of injected sequences with clustering in the single-group sets does not reappear here, where each wrong label is carried by one group among many recipients.
+Whether that is because the groups are spread over many recipients, or because the donors here are not the near-identical *S. aureus* sequences of the delete design, has not been tested.
+It also means that the clustering result depends on how the injected sequences are spread, which the single-group design cannot show.
+Only one cell per k and one run per cell are available, so these are single observations.
+
+# References
+
+```{r}
+# vim: sw=2
+```
