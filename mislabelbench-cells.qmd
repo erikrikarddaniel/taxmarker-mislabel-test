@@ -26,6 +26,7 @@ ggplot2::theme_set(ggplot2::theme_bw())
 #| include: false
 
 library(dplyr, warn.conflicts = FALSE)
+library(ggplot2)
 library(knitr)
 library(readr)
 ```
@@ -66,7 +67,7 @@ Table cells show the median over the three cells with the range in brackets.
 med <- function(x, digits = 0) if (min(x) == max(x)) as.character(x[1]) else sprintf(paste0("%.", digits, "f (%.", digits, "f-%.", digits, "f)"), median(x), min(x), max(x))
 
 read_tsv("data/mb_cells.tsv", show_col_types = FALSE) %>%
-  filter(cell_k > 0) %>%
+  filter(cell_k > 0, distance == "family", rate == 0.05) %>%
   mutate(setup = factor(setup, c("alone", "cluster", "cluster_raxtax"), c("sativa-epang alone", "cluster", "cluster + raxtax"))) %>%
   mutate(share = flagged / (flagged + other_flags), share_expanded = flagged_expanded / (flagged_expanded + other_expanded)) %>%
   group_by(setup, k = cell_k) %>%
@@ -91,6 +92,92 @@ Whether that is because the groups are spread over many recipients, or because t
 It also means that the clustering result depends on how the injected sequences are spread, which the single-group design cannot show.
 The three cells per k are three injections analysed with one pipeline seed (42), so the ranges do not include search variation.
 
+## Other distances and rates
+
+The same three setups were run on the first cell of every other combination of distance (species, genus, family, order, class, phylum) and rate (1% and 5%), k = 1, 2, 3, 5 and 10.
+Family distance at 5% has three cells per k as above; the other combinations have one.
+The distance is the taxonomic rank up to which donor and recipient lineage share their classification, so species distance moves a sequence to a sister species and phylum distance to a different phylum.
+
+```{r mb-data}
+#| label: mb-data
+#| include: false
+
+setup_lv <- c("alone", "cluster", "cluster_raxtax")
+setup_lb <- c("sativa-epang alone", "cluster", "cluster + raxtax")
+setup_col <- c("sativa-epang alone" = "#4d4d4d", "cluster" = "#1b7837", "cluster + raxtax" = "#c2541d")
+
+cells <- read_tsv("data/mb_cells.tsv", show_col_types = FALSE) %>%
+  filter(cell_k > 0) %>%
+  mutate(
+    setup = factor(setup, setup_lv, setup_lb),
+    distance = factor(distance, c("species", "genus", "family", "order", "class", "phylum")),
+    rate = factor(rate, c(0.01, 0.05), c("1% relabelled", "5% relabelled")),
+    flagged_share = flagged / injected,
+    expanded_share = flagged_expanded / injected,
+    share = flagged / (flagged + other_flags),
+    share_expanded = flagged_expanded / (flagged_expanded + other_expanded)
+  )
+
+mb_theme <- list(
+  facet_grid(rate ~ distance),
+  scale_x_continuous(breaks = c(1, 2, 3, 5, 10), trans = "log10"),
+  scale_colour_manual(values = setup_col, name = NULL),
+  theme(legend.position = "bottom", panel.grid.minor = element_blank())
+)
+
+by_variant <- function(d, plain, expanded) {
+  bind_rows(
+    d %>% transmute(setup, distance, rate, k = cell_k, cell_seed, value = {{ plain }}, variant = "flagged itself"),
+    d %>% transmute(setup, distance, rate, k = cell_k, cell_seed, value = {{ expanded }}, variant = "expanded to cluster")
+  )
+}
+```
+
+```{r fig-mb-recall}
+#| label: fig-mb-recall
+#| fig-cap: "Fraction of injected sequences flagged against k, by distance (columns) and rate (rows). Solid lines: a sequence counts only if it is flagged itself; dashed lines: it also counts if it shares a cluster with a flagged representative. Points are cells; family 5% has three per k, the rest one."
+#| fig-height: 5.5
+
+by_variant(cells, flagged_share, expanded_share) %>%
+  ggplot(aes(k, value, colour = setup, linetype = variant)) +
+  stat_summary(fun = mean, geom = "line") +
+  geom_point(alpha = 0.6, size = 1) +
+  scale_y_continuous(limits = c(0, 1)) +
+  scale_linetype_manual(values = c("flagged itself" = "solid", "expanded to cluster" = "dashed"), name = NULL) +
+  labs(x = "k (sequences per wrong label)", y = "injected sequences flagged") +
+  mb_theme
+```
+
+```{r fig-mb-added}
+#| label: fig-mb-added
+#| fig-cap: "Flags on sequences that were not injected and not flagged in the same setup's un-injected run, against k. Line types as in the previous figure."
+#| fig-height: 5.5
+
+by_variant(cells, added, added_expanded) %>%
+  ggplot(aes(k, value, colour = setup, linetype = variant)) +
+  stat_summary(fun = mean, geom = "line") +
+  geom_point(alpha = 0.6, size = 1) +
+  scale_y_continuous(trans = "sqrt", breaks = c(0, 10, 50, 100, 200)) +
+  scale_linetype_manual(values = c("flagged itself" = "solid", "expanded to cluster" = "dashed"), name = NULL) +
+  labs(x = "k (sequences per wrong label)", y = "added flags on other sequences") +
+  mb_theme
+```
+
+```{r fig-mb-share}
+#| label: fig-mb-share
+#| fig-cap: "Share of all flags that are injected sequences against k. The flags of the un-injected base set count as other flags. Line types as in the previous figures."
+#| fig-height: 5.5
+
+by_variant(cells, share, share_expanded) %>%
+  ggplot(aes(k, value, colour = setup, linetype = variant)) +
+  stat_summary(fun = mean, geom = "line") +
+  geom_point(alpha = 0.6, size = 1) +
+  scale_y_continuous(limits = c(0, 1)) +
+  scale_linetype_manual(values = c("flagged itself" = "solid", "expanded to cluster" = "dashed"), name = NULL) +
+  labs(x = "k (sequences per wrong label)", y = "share of flags that are injected") +
+  mb_theme
+```
+
 ## Runtime
 
 Runtimes come from the Nextflow execution traces of the runs above (`scripts/mb_runtimes.py`).
@@ -104,6 +191,7 @@ The stage columns sum task durations: RAxML-NG search, sativa-epang placement (r
 #| tbl-cap: Median runtime in seconds per run on MislabelBench cells (family distance, 5%), over the n runs of each setup and k (k = 0 is the un-injected base set). Concurrent runs, `--fast --seed 42`, GTR+FO+I+R10.
 
 read_tsv("data/mb_runtimes.tsv", show_col_types = FALSE) %>%
+  filter(parallel == 4) %>%
   mutate(setup = factor(setup, c("alone", "cluster", "cluster_raxtax"), c("sativa-epang alone", "cluster", "cluster + raxtax"))) %>%
   group_by(setup, k) %>%
   summarise(n = n(), across(c(wall, raxml, placement, prefilter, other), median), .groups = "drop") %>%
