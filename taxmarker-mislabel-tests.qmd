@@ -42,6 +42,7 @@ library(grateful)
 
 - 2026-10-14: added the delete design (`--drop`; `k3del7`, `k5del5`, `k0del10`) as an extra panel in the three figures, the full-pipeline `k0` and the full-pipeline points in the collateral figure.
 - 2026-10-15: added `k7del3`, `k8del2` and `k9del1` (seed 42, three draws each) to the delete design, and the two clustering setups (with and without raxtax) on the first draw of the delete sets.
+- 2026-10-16: added the share of wrong-label relatives (`scripts/relatives.py`), a cross-check with the MislabelBench scorer (`scripts/mb_score.py`) and a discussion of MislabelBench [@mislabelbench].
 
 # Summary
 
@@ -71,6 +72,10 @@ The *E. coli* group of the test set holds 18 true *E. coli* and 3 sequences that
   sativa-epang alone then flags all injected sequences at k = 3, 5, 7 and 8 in all three draws, 7/9, 0/9 and 9/9 at k = 9, and 8/10, 0/10 and 0/10 at k = 10 (the moved sets leave 10 donors too, so they are the k = 10 end).
   The break comes at a different k in each draw, and `k5` with 15 donors left is 5/5 as well, so donor depletion does not explain the loss; the number injected and which sequences are drawn do.
   The moved and delete designs agree where they overlap and differ mainly because they cover different ranges of k.
+- The share of wrong-label relatives (injected plus known mislabelled, of all *S. aureus* sequences left) orders the sets: full recall up to 0.50, none at 0.77, draws part at 0.52-0.55.
+  Among the identical relatives of an injected sequence, none is flagged when more than half carry the wrong label (0 of 29).
+  The share does not explain why `k9del1d3` (9/9) becomes `k10d3` (0/10) with one added sequence that has no identical relative.
+  MislabelBench's scorer gives the same recall as ours on the local sets.
 - With clustering in front of sativa-epang, with or without raxtax, the delete sets (first draw, seed 42) give no flagged injected sequence from k = 3 to k = 10, although 2 to 5 of them are cluster representatives and so testable.
   The known mislabelled sequences flagged at k = 0 are lost as soon as sequences are injected.
   The pre-filters therefore cost sensitivity even where donors are not depleted.
@@ -446,7 +451,61 @@ At k = 9 the draws part: 7/9 in draw 1, 0/9 in draw 2 and 9/9 in draw 3.
 The break therefore comes at a different k in each draw: between 8 and 9 in draw 2, between 9 and 10 in draw 3, and in draw 1 it is gradual (7/9, then 8/10).
 Because `k9del1d3` and `k10d3` both leave 10 donors and differ by one injected sequence, that one sequence moves recall from 9/9 to 0/10; which sequence it is has not been examined.
 More than 10 injected sequences cannot keep 10 donors, since there are only 20.
-The ratio of injected to remaining sequences is a candidate explanation that fits (0.3 for `k5`, 0.5 for `k5del5`, 1.0 for `k10`, 3.0 for `k15`), but nothing here tests it.
+The ratio of injected to remaining sequences is a candidate explanation that fits (0.3 for `k5`, 0.5 for `k5del5`, 1.0 for `k10`, 3.0 for `k15`); the next section tests it.
+
+### Wrong-label relatives
+
+MislabelBench [@mislabelbench] reports that detection is predicted by the proportion of a sequence's surviving relatives that carry the wrong label, not by k itself.
+Here the relatives of an injected sequence are the other *S. aureus* sequences in the set: the other injected ones and the three known mislabelled ones carry the wrong label, the donors left carry the true one.
+The share of wrong-label relatives is then 0.32 for `k5`, 0.33 for `k3del7`, 0.41 for `k5del5`, 0.47 for `k7del3`, 0.50 for `k8del2`, 0.52 for `k9del1`, 0.55 for `k10` and 0.77 for `k15`.
+Recall is full up to 0.50 and zero at 0.77, and the draws part only in the narrow range 0.52-0.55 (7/9, 0/9, 9/9 and 8/10, 0/10, 0/10).
+So the share orders the sets, but it is the same for all draws of one k and therefore cannot say which draw fails.
+
+The sequences are nearly identical in this marker (p-distance 0-0.0013 between *S. aureus* sequences), so many relatives tie at distance 0.
+Counting only the identical relatives per injected sequence separates better:
+
+```{r tbl-relatives}
+#| label: tbl-relatives
+#| tbl-cap: Injected sequences by the share of wrong-label sequences among their identical relatives (alignment p-distance 0), all delete and moved sets with seed 42 and lwr > 0.9 (171 injected sequences). Flagged = flagged by sativa-epang alone.
+
+read_tsv("data/relatives.tsv", show_col_types = FALSE) %>%
+  mutate(identical = ident_wrong + ident_true,
+         share = ifelse(identical == 0, "no identical relative",
+                        as.character(cut(ident_wrong / identical, c(-Inf, .25, .4, .5, Inf),
+                                         labels = c("up to 0.25", "0.25-0.4", "0.4-0.5", "above 0.5"))))) %>%
+  group_by(`wrong-label share of identical relatives` = share) %>%
+  summarise(injected = n(), flagged = sum(flagged)) %>%
+  arrange(match(`wrong-label share of identical relatives`, c("no identical relative", "up to 0.25", "0.25-0.4", "0.4-0.5", "above 0.5"))) %>%
+  kable()
+```
+
+No injected sequence is flagged when more than half of its identical relatives carry the wrong label (0 of 29), and 6 of 20 are flagged between 0.4 and 0.5.
+A sequence whose strictly nearest relative is a wrong-label one is never flagged either (0 of 11, in `k9del1`, `k10` and `k15`).
+This is the tie at the placement again: identical true and wrong-label relatives have equal evidence.
+
+It is not sufficient, though.
+`k9del1d3` and `k10d3` differ by one injected sequence, which has no identical relative, and six injected sequences share the same identical group (5 wrong-label and 8 true relatives each) in both.
+All six are flagged in `k9del1d3` and none in `k10d3`.
+A local count of relatives cannot explain that flip; something global changes, for example the tree search on a different input or the position of the added sequence in the reference tree, which has not been examined.
+The classification here is a descriptive one made after seeing the results, and uses one seed and 171 sequences from highly correlated groups.
+
+### Cross-check with the MislabelBench scorer
+
+The scorer of MislabelBench (`bin/analysis/score_injection.py`) was run on the local sets, seed 42, with `k0` as baseline, at confidence >= 0.9 and at original-label exclusion >= 0.9 (`scripts/mb_score.py`; the scorer is not copied here).
+
+```{r tbl-mbscore}
+#| label: tbl-mbscore
+#| tbl-cap: MislabelBench scorer on the local sets (seed 42, threshold 0.9). Found = injected sequences flagged. Added = flags on non-injected sequences that are not in the k = 0 baseline (the three known mislabelled sequences are counted as non-injected). Label correct = the proposed lineage equals the true one.
+
+read_tsv("data/mb_score.tsv", show_col_types = FALSE) %>%
+  transmute(set, injected, `found (confidence)` = conf_found, `added (confidence)` = conf_added,
+            `found (exclusion)` = excl_found, `added (exclusion)` = excl_added, `label correct` = label_correct) %>%
+  kable()
+```
+
+The injected sequences found are the same as in our scoring in every set, so the two scorers agree on recall.
+Exclusion >= 0.9 finds the same injected sequences as confidence >= 0.9 but adds more flags on other sequences (for example 19 against 5 at `k3del7`).
+The proposed lineage is the true one for all found sequences except two of the eight in `k10` (6 of 8).
 
 Collateral flags in the delete sets are 4-6 at k = 3, within the noise floor, and 5-11 at k = 5.
 At k = 7-9 they are 2-6 (k = 7 and 8) and 4, 13 and 4 (k = 9, draws 1-3; seed 42), mostly within the 5-11 of the `k0del10` control; the 13 is the draw that loses all injected sequences.
@@ -709,6 +768,15 @@ Two ideas, not yet tested:
 2. Remove the long-stem groups from the tree, estimate the tree again without them, and still place them against the cleaner reference.
 
 Both can be judged with the metrics above on the injected sets and with the archaeal stem groups and their BLAST domain.
+
+**MislabelBench points the same way, with a different design.**
+Its grid relabels 1% or 5% of a database of 2,023 archaeal 16S sequences in groups of k sharing one wrong label, so many groups are present at once, and it never deletes donors [@mislabelbench].
+Recall falls with k there too (0.94 at k = 1, 0.13 at k = 10), and it reports the share of wrong-label relatives, not k, as the better predictor.
+Our data agree with that as an ordering (full recall up to a share of 0.50, none at 0.77) but not between draws of the same k, where one wrong-label group in a bacterial reference is enough to lose all injected sequences or none.
+Our single-group sets reach full recall at k = 3-8, where the benchmark's family-distance cells at 5% give 0.49 (k = 3) and 0.23 (k = 5); one possible reason is that with a single group the wrong label has no competition from other groups, which has not been tested.
+Neither design tests clustering or raxtax in front of sativa-epang, which is the main finding here.
+The benchmark's scorer reproduces our recall on the same sets.
+The same set of sequences could be run through the pipeline setups on its datasets, which would show whether the loss through clustering also holds with several groups present; that has not been done.
 
 **Questions for the sativa-epang authors.**
 
