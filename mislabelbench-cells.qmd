@@ -115,7 +115,7 @@ med <- function(x, digits = 0) if (min(x) == max(x)) as.character(x[1]) else spr
 
 read_tsv("data/mb_cells.tsv", show_col_types = FALSE) %>%
   filter(cell_k > 0, distance == "family", rate == 0.05) %>%
-  mutate(setup = factor(setup, c("alone", "cluster", "cluster_raxtax"), c("sativa-epang alone", "cluster", "cluster + raxtax")),
+  mutate(setup = factor(setup, c("alone", "cluster", "cluster_raxtax"), c("alone", "cluster", "cluster + raxtax")),
          pct = 100 * flagged_expanded / injected,
          share = flagged_expanded / (flagged_expanded + other_expanded)) %>%
   group_by(setup, k = cell_k) %>%
