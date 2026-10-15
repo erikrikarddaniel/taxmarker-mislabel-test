@@ -87,6 +87,7 @@ Only one cell per k and one run per cell are available, so these are single obse
 
 Runtimes come from the Nextflow execution traces of the runs above (`scripts/mb_runtimes.py`).
 Four runs shared the 128-core server at a time, each with 30 CPUs and 150 GB, so the times are indicative and not a speed benchmark.
+The RAxML-NG search runs with `--fast --seed 42` on 12 threads, as set by the process label.
 Wall is the time from the first task submitted to the last task finished.
 The stage columns sum task durations: RAxML-NG search, sativa-epang placement (reference, tasks, placement, scoring and report), the clustering and raxtax pre-filters, and everything else (taxonomy, name check, gap filter, MultiQC).
 
