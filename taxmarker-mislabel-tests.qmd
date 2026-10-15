@@ -67,6 +67,13 @@ The *E. coli* group of the test set holds 18 true *E. coli* and 3 sequences that
 - With 5 or 10 injected sequences the full pipeline, with clustering and raxtax in front of sativa-epang, flags none of them.
   Clustering at identity 1.0 collapses the true *S. aureus* relatives (15 to 4 and 10 to 2 representatives), so the remaining ones tie with the injected sequences at the placement, and the raxtax genus confidence for *Staphylococcus* stays below the 0.9 cutoff.
   Whether a lower clustering identity or cluster-size weights restore the flags is not yet tested.
+- A delete design keeps 10 true *S. aureus* sequences whatever k is, which separates the number injected from the depletion of the donor species.
+  sativa-epang alone then flags all injected sequences at k = 3, 5, 7 and 8 in all three draws, 7/9, 0/9 and 9/9 at k = 9, and 8/10, 0/10 and 0/10 at k = 10 (the moved sets leave 10 donors too, so they are the k = 10 end).
+  The break comes at a different k in each draw, and `k5` with 15 donors left is 5/5 as well, so donor depletion does not explain the loss; the number injected and which sequences are drawn do.
+  The moved and delete designs agree where they overlap and differ mainly because they cover different ranges of k.
+- With clustering in front of sativa-epang, with or without raxtax, the delete sets (first draw, seed 42) give no flagged injected sequence from k = 3 to k = 10, although 2 to 5 of them are cluster representatives and so testable.
+  The known mislabelled sequences flagged at k = 0 are lost as soon as sequences are injected.
+  The pre-filters therefore cost sensitivity even where donors are not depleted.
 - The injected sequences nevertheless have a recognisable tree signature: a group of near-zero terminal branches on one long stem above a strict subset of a labelled taxon.
   In a 5,226-taxon archaeal tree the same rule flags groups that are largely bacterial rRNA genes by BLAST.
 
@@ -238,7 +245,7 @@ delete_metrics <- read_tsv("data/delete_metrics.tsv", show_col_types = FALSE) %>
 delete_consensus <- read_tsv("data/delete_consensus.tsv", show_col_types = FALSE)
 clus_names <- c(cluster = "clustering + sativa-epang", cluster_raxtax = "clustering + raxtax + sativa-epang")
 setup_flags <- read_tsv("data/setup_flags.tsv", show_col_types = FALSE) %>% mutate(setup = clus_names[setup])
-clus_colours <- c(scales::hue_pal()(3), "#984EA3")
+clus_colours <- c("#0072B2", "#56B4E9", "#D55E00", "#E69F00")
 ```
 
 ```{r fig-recall}
