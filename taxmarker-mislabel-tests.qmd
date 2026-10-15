@@ -715,6 +715,8 @@ Both can be judged with the metrics above on the injected sets and with the arch
 - How are identical sequences with conflicting labels handled in scoring?
 - What is the effect of raxtax `--skip-exact-matches` in this setting?
 - How are folds assigned, and could folds be assigned by taxon (all members of a species or genus removed together)?
+- Could cluster sizes (weights) enter the sativa-epang scoring, so that a representative of a large cluster counts for all its members?
+  Clustering collapses identical true relatives, which is what lets the injected sequences tie with them at the placement.
 - Why is a query with summed lwr 1.0 in a clade of another phylum not in `.mis`?
 - The sativa-epang documentation states that SATIVA's classification and decision logic is unchanged, yet the two implementations do not flag the same sequences.
   Which step explains the difference, and could the same difference explain the unflagged queries above?
