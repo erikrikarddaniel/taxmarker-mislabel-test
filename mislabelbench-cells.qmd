@@ -48,6 +48,32 @@ A sequence the pipeline reports as mislabelled is said to be *flagged*.
 - The price is on the other sequences: expansion adds 58-182 flags, and the share of flags that are injected is lower than for sativa-epang alone at k <= 3 (0.22-0.32 against 0.34-0.63), overlaps it at k = 5 (0.25-0.30 against 0.18-0.44) and is higher at k = 10 (0.30-0.38 against 0.23-0.27).
 - Raxtax flags 91-95 of 101 injected sequences at k = 1, but only 6-12 of those are sativa-epang flags.
 
+# The benchmark grid
+
+MislabelBench relabels sequences of a database of N = 2,023 archaeal 16S sequences in groups, and varies three things [@mislabelbench].
+
+- **Distance** says how far the wrong label is from the true one: the recipient lineage shares everything above the named rank with the donor lineage.
+  With species distance a sequence gets the label of a sister species in the same genus; with class distance it gets a label from another class.
+- **Rate** is the share of the database that is relabelled, 1% (about 20 sequences) or 5% (about 100).
+- **k** is the number of sequences in one group: k sequences from one donor lineage all get the label of one recipient lineage.
+  New donors and recipients are drawn until the rate is reached, so the number of groups is about rate × N ÷ k.
+  A donor lineage has at least k + 1 members, so it always keeps at least one correctly labelled sequence.
+
+| | k = 1 | k = 2 | k = 3 | k = 5 | k = 10 |
+|---|---|---|---|---|---|
+| 1% (about 20 sequences) | 20 groups | 10 | 7 | 4 | 2 |
+| 5% (about 100 sequences) | 100 groups | 50 | 34 | 20 | 10 |
+
+Rate and k are crossed: at a fixed rate a larger k gives fewer but larger groups, and a larger group outvotes the correctly labelled relatives of its donor.
+A higher rate gives more groups and so more wrong labels in total.
+Each combination of distance, rate and k exists as three cells that differ in which sequences are chosen (cell seeds 1-3).
+
+The recall in this report is the fraction of the injected sequences that are flagged, and it should not be confused with the rate.
+It generally rises with distance, because a sequence given a label from a distant lineage sits among relatives whose labels clearly disagree with it, whereas one given the label of a sister species lies next to its true relatives.
+It falls with k and, more weakly, with rate.
+
+The single-group sets of `taxmarker-mislabel-tests.qmd` differ in design: one group of k sequences, relabelled into one recipient taxon, in a bacterial reference.
+
 # Results
 
 ## The three setups on three cells per k
