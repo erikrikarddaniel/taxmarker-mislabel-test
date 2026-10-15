@@ -44,3 +44,8 @@ relatives.tsv: $(SCRIPTS)/relatives.py $(SEEDTEST)/k9del1d3_seed42.results/misla
 mb_score.tsv: $(SCRIPTS)/mb_score.py
 	test -n "$(MBSCORE)"
 	cd $(SEEDTEST) && python3 $(SCRIPTS)/mb_score.py $(MBSCORE) $(SCORE_SETS) > $(CURDIR)/$@
+
+# Results copied from southern:projects/taxmarker/mb into $(MBCELLS)/<setup>/ (mislabels, gapfilter, clusterselect, checknameconsistency), truth.json files into $(MBCELLS)/truth/
+MBCELLS ?= $(HOME)/tmp/mbcells
+mb_cells.tsv: $(SCRIPTS)/mb_cells.py
+	cd $(MBCELLS) && python3 $(SCRIPTS)/mb_cells.py 0.9 > $(CURDIR)/$@
