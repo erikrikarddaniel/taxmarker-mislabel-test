@@ -29,24 +29,35 @@ library(dplyr, warn.conflicts = FALSE)
 library(ggplot2)
 library(knitr)
 library(readr)
+library(tidyr)
 ```
 
 # Version history
 
-- 2026-10-16: added cell seeds 2 and 3 (three cells per k), replacing the single seed-1 cell.
-- 2026-10-16: moved here from `taxmarker-mislabel-tests.qmd`: the three setups on MislabelBench cells (family distance, 5%, seed 1).
+- 2026-10-16: moved here from `taxmarker-mislabel-tests.qmd`: the three setups on MislabelBench cells (family distance, 5%).
+- 2026-10-16: added cell seeds 2 and 3 for family distance at 5% (three cells per k).
+- 2026-10-16: added the other distances and the 1% rate (first cell of each), figures, and runtimes.
+- 2026-10-16: a sequence now counts as flagged if it shares a cluster with a flagged representative; counts of representatives alone are no longer shown.
 
 # Summary
 
-This report runs nf-core/taxmarker on cells of the MislabelBench grid [@mislabelbench], a benchmark that relabels 1% or 5% of 2,023 archaeal 16S sequences in groups of k sharing one wrong label.
+This report runs nf-core/taxmarker on cells of the MislabelBench grid [@mislabelbench], a benchmark that relabels 1% or 5% of 2,023 archaeal 16S sequences in groups of k sharing one wrong label, at six taxonomic distances.
 It complements `taxmarker-mislabel-tests.qmd`, where one wrong-label group is injected into a bacterial reference.
-A sequence the pipeline reports as mislabelled is said to be *flagged*.
+A sequence is *flagged* if the pipeline flags it or, when clustering is on, if it shares a cluster with a flagged representative.
+The pipeline itself reports only representatives; applying the flag to the cluster is our scoring rule (see Methods).
 
-- With sativa-epang alone, recall of injected sequences falls with k like the figures MislabelBench reports for sativa-epang, with a wide spread between cells at k = 5 (17-52 of 105 flagged in three cells).
-- With clustering in front, the injected sequences that share a cluster with a flagged representative are 64-85% of all injected at k >= 3 in all three cells per k, against 16-50% for sativa-epang alone.
-  That is the opposite of the single-group sets, where clustering lost all injected sequences.
-- The price is on the other sequences: expansion adds 58-182 flags, and the share of flags that are injected is lower than for sativa-epang alone at k <= 3 (0.22-0.32 against 0.34-0.63), overlaps it at k = 5 (0.25-0.30 against 0.18-0.44) and is higher at k = 10 (0.30-0.38 against 0.23-0.27).
-- Raxtax flags 91-95 of 101 injected sequences at k = 1, but only 6-12 of those are sativa-epang flags.
+- sativa-epang alone flags most injected sequences at k = 1 and few at k = 10.
+  At genus distance and above, with 5% relabelled, it flags 56-99% at k = 1 and 11-19% at k = 10 (genus 56% and 17%, phylum 99% and 11%).
+  At species distance it flags 39% at k = 1 and 18% at k = 10.
+- With clustering in front, the flagged share stays high at large k.
+  At k = 10 and 5% relabelled it is 47% (genus) and 73-94% (family to phylum), and with 1% relabelled 100% from family distance up.
+  Species distance is hard for every setup (at most 50% flagged).
+- The price is flags on other sequences.
+  At 5% and genus distance or above, clustering adds 42-201 flags on non-injected sequences against 6-33 for sativa-epang alone.
+  The share of all flags that are injected sequences is lower with clustering at k <= 3 (0.22-0.32 against 0.41-0.67 alone) and higher at k = 10 (0.31-0.43 against 0.15-0.27).
+- Raxtax in front of clustering adds recall mainly at genus distance (73-79% against 45-53% at k <= 2, 5% relabelled) and costs more flags on other sequences.
+  At k = 1 and 5%, from genus distance up, it flags 79-100% of the injected sequences, but only 2-18 of them are sativa-epang flags.
+- A run takes 2.5-6 min on a shared 128-core server, with the RAxML-NG search as most of that.
 
 # The benchmark grid
 
@@ -74,55 +85,60 @@ It falls with k and, more weakly, with rate.
 
 The single-group sets of `taxmarker-mislabel-tests.qmd` differ in design: one group of k sequences, relabelled into one recipient taxon, in a bacterial reference.
 
+# Methods
+
+A cell is a taxonomy file with injected wrong labels; the alignment is the same in all cells (`data/gtdb/gtdb_arc2k.fasta`, 1,478 columns).
+The three setups are sativa-epang alone (`--skip_raxtax true --skip_clustering true`), clustering with raxtax off (`--skip_raxtax true`) and the pipeline defaults (clustering and raxtax on).
+All use `--fast --seed 42` and `GTR+FO+I+R10` for the RAxML-NG search, which runs on 12 threads (`scripts/run_mb.sh`; results scored with `scripts/mb_cells.py`).
+A flag is a row of `mislabels.tsv` with lwr > 0.9, from any method, so raxtax flags count as well.
+
+Only cluster representatives reach the tree and sativa-epang, so the pipeline reports flags for representatives only.
+A cluster holds sequences of one taxon, and a flag on its representative says that the label of the whole cluster is doubtful.
+We therefore count every member of the cluster of a flagged representative as flagged; with clustering off, each sequence stands for itself.
+This is a rule applied after the pipeline, not a pipeline output, and the single-group results of `taxmarker-mislabel-tests.qmd` count representatives only, so they are not comparable with the numbers here.
+Added flags are flags on non-injected sequences that are not flagged in the same setup's run on the un-injected base set.
+The base set itself has 49 flags (sativa-epang alone), 77 (clustering) and 114 (clustering and raxtax) when counted this way; these count as other flags in the injected share.
+
 # Results
 
-## The three setups on three cells per k
+## Family distance at 5%, three cells per k
 
-To see whether the clustering result depends on the injection design, the three setups (sativa-epang alone, clustering with raxtax off, and the pipeline defaults) were run on cells of the MislabelBench grid [@mislabelbench]: family distance, 5% of the 2,023 archaeal sequences relabelled, k = 1, 2, 3, 5 and 10 sequences per wrong label, in the three cells (cell seeds 1-3) the benchmark provides for each k, plus the un-injected base set.
-The input is its alignment and its taxonomy, with `--fast --seed 42` and `GTR+FO+I+R10` as elsewhere in this report (`scripts/run_mb.sh`, run on a 128-core server; results scored with `scripts/mb_cells.py`).
-Here 101-110 sequences are injected in groups of k, each group with its own donor and recipient taxon, and no donors are deleted.
-Flagged counts every method, so raxtax flags count as well; testable = injected sequences that reach sativa-epang after clustering and raxtax; expanded = injected sequences that are flagged or share a cluster with a flagged representative.
-Added = flags on non-injected sequences that are not flagged at the same setup's base run.
-The cell seed changes which sequences are injected; the pipeline seed is 42 throughout, so the spread between cell seeds is the spread between injections.
+Family distance with 5% relabelled is the one combination with three cells per k (cell seeds 1-3), which gives a spread between injections.
+The cell seed changes which sequences are injected; the pipeline seed is 42 throughout, so the spread is the spread between injections and does not include search variation.
 Table cells show the median over the three cells with the range in brackets.
 
 ```{r tbl-mb-cells}
 #| label: tbl-mb-cells
-#| tbl-cap: The three setups on MislabelBench cells (family distance, 5%; three cell seeds per k, pipeline seed 42, lwr > 0.9). Median over the cells with the range in brackets. Flagged and expanded are injected sequences; added counts flags on other sequences; injected share of flags is flagged injected sequences over all flags, which include the flags of the un-injected base set. Expansion adds every member of the cluster of a flagged representative.
+#| tbl-cap: The three setups on MislabelBench cells (family distance, 5%; three cell seeds per k, pipeline seed 42, lwr > 0.9). Median over the cells with the range in brackets. Flagged are injected sequences flagged, cluster-wide; of which sativa-epang counts representatives flagged by sativa-epang; added counts cluster-wide flags on other sequences; injected share is injected flagged over all flags, which include the flags of the un-injected base set.
 
 med <- function(x, digits = 0) if (min(x) == max(x)) as.character(x[1]) else sprintf(paste0("%.", digits, "f (%.", digits, "f-%.", digits, "f)"), median(x), min(x), max(x))
 
 read_tsv("data/mb_cells.tsv", show_col_types = FALSE) %>%
   filter(cell_k > 0, distance == "family", rate == 0.05) %>%
-  mutate(setup = factor(setup, c("alone", "cluster", "cluster_raxtax"), c("sativa-epang alone", "cluster", "cluster + raxtax"))) %>%
-  mutate(share = flagged / (flagged + other_flags), share_expanded = flagged_expanded / (flagged_expanded + other_expanded)) %>%
+  mutate(setup = factor(setup, c("alone", "cluster", "cluster_raxtax"), c("sativa-epang alone", "cluster", "cluster + raxtax")),
+         pct = 100 * flagged_expanded / injected,
+         share = flagged_expanded / (flagged_expanded + other_expanded)) %>%
   group_by(setup, k = cell_k) %>%
-  summarise(injected = first(injected), testable = med(testable), flagged = med(flagged), `flagged by sativa-epang` = med(flagged_sativa),
-            expanded = med(flagged_expanded), added = med(added), `added, expanded` = med(added_expanded),
-            `injected share of flags` = med(share, 2),
-            `injected share, expanded` = med(share_expanded, 2), .groups = "drop") %>%
+  summarise(injected = first(injected), flagged = med(flagged_expanded), `flagged %` = med(pct),
+            `of which sativa-epang` = med(flagged_sativa), added = med(added_expanded), `injected share` = med(share, 2), .groups = "drop") %>%
   arrange(setup, k) %>%
   kable()
 ```
 
 sativa-epang alone flags 86-92, 65-73, 37-49, 17-52 and 20-21 of the injected sequences at k = 1, 2, 3, 5 and 10 (85-91%, 64-72%, 36-48%, 16-50% and 18-19%), a fall with k of the same shape as the one in the single-group sets.
-These are close to the recalls MislabelBench reports for sativa-epang at this distance and rate (0.96, 0.67, 0.49, 0.23 and 0.20), except for the large spread at k = 5.
-With clustering in front, only the 28 to 101 representatives are placed, and 79-81, 51-54, 32-42, 21-27 and 14-18 of the injected sequences are flagged, fewer than alone at k = 1, 2 and 10, and within the spread of alone at k = 3 and 5.
-Counting the cluster-mates of a flagged representative as flagged gives 79-82, 67-76, 70-77, 67-73 and 79-80 injected sequences flagged, 64-75% at k >= 3 against 16-50% alone (64-85% with raxtax on).
-The price is on the other sequences: expansion also flags all members of flagged clusters of untouched sequences, and the added flags go from 2-21 to 58-182.
-Raxtax flags 91-95 of 101 at k = 1, but only 6-12 of those are sativa-epang flags; it removes flagged sequences from the tree before the placement, and the added flags are 8-47 without expansion, against 2-21 for clustering alone.
-The injected share of all flags is 0.22-0.32 with expansion at k <= 3 against 0.34-0.63 alone, overlaps at k = 5 and is 0.30-0.38 against 0.23-0.27 at k = 10.
+These are close to the recalls MislabelBench reports for sativa-epang at this distance and rate (96%, 67%, 49%, 23% and 20%), except for the large spread at k = 5.
+With clustering, 78-81%, 66-75%, 69-75%, 64-70% and 72-73% are flagged, and with raxtax as well 90-94%, 76-85%, 73-75%, 68-79% and 65-85%.
+Clustering is below sativa-epang alone at k = 1, level with it at k = 2 and above it from k = 3.
+The price is on the other sequences: clustering adds 58-171 flags, clustering with raxtax 61-182, and sativa-epang alone 10-33.
+Raxtax flags 90-94% of the injected sequences at k = 1, but only 6-12 of them are sativa-epang flags; it removes flagged sequences from the tree before the placement.
+The injected share of all flags is 0.29-0.32 (clustering) and 0.25-0.26 (with raxtax) at k = 1, against 0.60-0.63 alone, and 0.38 and 0.30-0.35 at k = 10, against 0.23-0.27 alone.
 
-So the loss of injected sequences with clustering in the single-group sets does not reappear here, where each wrong label is carried by one group among many recipients.
+The loss of injected sequences with clustering in the single-group sets does not reappear here, where each wrong label is carried by one group among many recipients.
 Whether that is because the groups are spread over many recipients, or because the donors here are not the near-identical *S. aureus* sequences of the delete design, has not been tested.
-It also means that the clustering result depends on how the injected sequences are spread, which the single-group design cannot show.
-The three cells per k are three injections analysed with one pipeline seed (42), so the ranges do not include search variation.
 
 ## Other distances and rates
 
-The same three setups were run on the first cell of every other combination of distance (species, genus, family, order, class, phylum) and rate (1% and 5%), k = 1, 2, 3, 5 and 10.
-Family distance at 5% has three cells per k as above; the other combinations have one.
-The distance is the taxonomic rank up to which donor and recipient lineage share their classification, so species distance moves a sequence to a sister species and phylum distance to a different phylum.
+The same three setups were run on the first cell (cell seed 1) of every other combination of distance and rate, k = 1, 2, 3, 5 and 10; family at 5% has three cells per k, shown as points.
 
 ```{r mb-data}
 #| label: mb-data
@@ -138,98 +154,102 @@ cells <- read_tsv("data/mb_cells.tsv", show_col_types = FALSE) %>%
     setup = factor(setup, setup_lv, setup_lb),
     distance = factor(distance, c("species", "genus", "family", "order", "class", "phylum")),
     rate = factor(rate, c(0.01, 0.05), c("1% relabelled", "5% relabelled")),
-    flagged_share = flagged / injected,
-    expanded_share = flagged_expanded / injected,
-    share = flagged / (flagged + other_flags),
-    share_expanded = flagged_expanded / (flagged_expanded + other_expanded)
+    k = cell_k,
+    flagged_share = flagged_expanded / injected,
+    share = flagged_expanded / (flagged_expanded + other_expanded)
   )
 
-mb_theme <- list(
-  facet_grid(rate ~ distance),
-  scale_x_continuous(breaks = c(1, 2, 3, 5, 10), trans = "log10"),
-  scale_colour_manual(values = setup_col, name = NULL),
-  theme(legend.position = "bottom", panel.grid.minor = element_blank())
-)
-
-by_variant <- function(d, plain, expanded) {
-  bind_rows(
-    d %>% transmute(setup, distance, rate, k = cell_k, cell_seed, value = {{ plain }}, variant = "flagged itself"),
-    d %>% transmute(setup, distance, rate, k = cell_k, cell_seed, value = {{ expanded }}, variant = "expanded to cluster")
-  )
+mb_plot <- function(y, ylab, ...) {
+  ggplot(cells, aes(k, {{ y }}, colour = setup)) +
+    stat_summary(fun = mean, geom = "line") +
+    geom_point(alpha = 0.6, size = 1) +
+    facet_grid(rate ~ distance) +
+    scale_x_continuous(breaks = c(1, 2, 3, 5, 10), trans = "log10") +
+    scale_colour_manual(values = setup_col, name = NULL) +
+    labs(x = "k (sequences per wrong label)", y = ylab) +
+    theme(legend.position = "bottom", panel.grid.minor = element_blank()) +
+    ...
 }
 ```
 
 ```{r fig-mb-recall}
 #| label: fig-mb-recall
-#| fig-cap: "Fraction of injected sequences flagged against k, by distance (columns) and rate (rows). Solid lines: a sequence counts only if it is flagged itself; dashed lines: it also counts if it shares a cluster with a flagged representative. Points are cells; family 5% has three per k, the rest one."
+#| fig-cap: "Fraction of injected sequences flagged against k, by distance (columns) and rate (rows). A sequence also counts as flagged if it shares a cluster with a flagged representative. Points are cells; family 5% has three per k, the rest one."
 #| fig-height: 5.5
 
-by_variant(cells, flagged_share, expanded_share) %>%
-  ggplot(aes(k, value, colour = setup, linetype = variant)) +
-  stat_summary(fun = mean, geom = "line") +
-  geom_point(alpha = 0.6, size = 1) +
-  scale_y_continuous(limits = c(0, 1)) +
-  scale_linetype_manual(values = c("flagged itself" = "solid", "expanded to cluster" = "dashed"), name = NULL) +
-  labs(x = "k (sequences per wrong label)", y = "injected sequences flagged") +
-  mb_theme
+mb_plot(flagged_share, "injected sequences flagged", scale_y_continuous(limits = c(0, 1), labels = scales::percent))
 ```
 
 ```{r fig-mb-added}
 #| label: fig-mb-added
-#| fig-cap: "Flags on sequences that were not injected and not flagged in the same setup's un-injected run, against k. Line types as in the previous figure."
+#| fig-cap: "Flags on sequences that were not injected and not flagged in the same setup's un-injected run, against k. Cluster-wide counts."
 #| fig-height: 5.5
 
-by_variant(cells, added, added_expanded) %>%
-  ggplot(aes(k, value, colour = setup, linetype = variant)) +
-  stat_summary(fun = mean, geom = "line") +
-  geom_point(alpha = 0.6, size = 1) +
-  scale_y_continuous(trans = "sqrt", breaks = c(0, 10, 50, 100, 200)) +
-  scale_linetype_manual(values = c("flagged itself" = "solid", "expanded to cluster" = "dashed"), name = NULL) +
-  labs(x = "k (sequences per wrong label)", y = "added flags on other sequences") +
-  mb_theme
+mb_plot(added_expanded, "added flags on other sequences", scale_y_continuous(trans = "sqrt", breaks = c(0, 10, 50, 100, 200)))
 ```
 
 ```{r fig-mb-share}
 #| label: fig-mb-share
-#| fig-cap: "Share of all flags that are injected sequences against k. The flags of the un-injected base set count as other flags. Line types as in the previous figures."
+#| fig-cap: "Share of all flags that are injected sequences against k. The flags of the un-injected base set count as other flags, which dominate at 1% where only about 20 sequences are injected."
 #| fig-height: 5.5
 
-by_variant(cells, share, share_expanded) %>%
-  ggplot(aes(k, value, colour = setup, linetype = variant)) +
-  stat_summary(fun = mean, geom = "line") +
-  geom_point(alpha = 0.6, size = 1) +
-  scale_y_continuous(limits = c(0, 1)) +
-  scale_linetype_manual(values = c("flagged itself" = "solid", "expanded to cluster" = "dashed"), name = NULL) +
-  labs(x = "k (sequences per wrong label)", y = "share of flags that are injected") +
-  mb_theme
+mb_plot(share, "share of flags that are injected", scale_y_continuous(limits = c(0, 1)))
 ```
+
+**Distance.**
+Species distance is hard for every setup: 39%, 25%, 27%, 17% and 18% are flagged by sativa-epang alone at k = 1, 2, 3, 5 and 10 with 5% relabelled, and clustering is lower still at k <= 3 (19%, 16% and 21%).
+From genus distance up, sativa-epang alone flags 56-100% at k = 1, and 0-19% at k = 10.
+With 1% relabelled the cells hold only about 20 injected sequences, so each point moves in steps of about 5 percentage points, and k = 10 means two groups.
+
+**Clustering.**
+From genus distance up, clustering keeps the flagged share high where sativa-epang alone has lost it.
+At k = 10 it flags 47% (genus) and 73-94% (family to phylum) with 5% relabelled, and 90-100% (genus to phylum) with 1%, against 0-19% alone.
+At k = 1 it flags about as many as alone, or up to 11 percentage points fewer (genus, 5%).
+
+**Cost.**
+At 5% and genus distance or above, clustering adds 42-201 flags on other sequences and clustering with raxtax 40-218, against 6-33 alone.
+At k = 1 to 3 the injected share of all flags is higher for sativa-epang alone (0.41-0.67 against 0.22-0.32 with clustering), at k = 5 the shares overlap, and at k = 10 clustering has the higher share (0.31-0.43 against 0.15-0.27).
+At 1% relabelled the share is 0.00-0.30 for all setups, because the 49-114 flags of the base set outnumber the 20 injected sequences; the added flags (1-9 alone, 1-72 with clustering, with or without raxtax) are the more informative number there.
+
+**Raxtax.**
+Raxtax adds recall over clustering alone mainly at genus distance: 79%, 73% and 76% against 45%, 53% and 48% at k = 1, 2 and 3 with 5% relabelled.
+At order distance and above the two are within 8 percentage points, and at family distance, 5%, within 12.
+At k = 1 with 5% relabelled raxtax flags 79% (genus) to 100% (class) of the injected sequences, but only 2 to 18 of these are sativa-epang flags.
+
+All of this is one cell per combination and one pipeline seed, except family at 5%.
+The first cell of a combination is not an average: family at 5% has a range of 17-52 flagged at k = 5 between its three cells.
 
 ## Runtime
 
-Runtimes come from the Nextflow execution traces of the runs above (`scripts/mb_runtimes.py`).
-Four runs shared the 128-core server at a time, each with 30 CPUs and 150 GB, so the times are indicative and not a speed benchmark.
-The RAxML-NG search runs with `--fast --seed 42` on 12 threads, as set by the process label.
+Runtimes come from the Nextflow execution traces of the runs (`scripts/mb_runtimes.py`).
 Wall is the time from the first task submitted to the last task finished.
 The stage columns sum task durations: RAxML-NG search, sativa-epang placement (reference, tasks, placement, scoring and report), the clustering and raxtax pre-filters, and everything else (taxonomy, name check, gap filter, MultiQC).
+The family 5% cells and the base set ran four at a time with 30 CPUs each; the other cells ran eight at a time with 15 CPUs each, so the times are indicative and not a speed benchmark, and the two batches are not directly comparable.
 
-```{r tbl-mb-runtimes}
-#| label: tbl-mb-runtimes
-#| tbl-cap: Median runtime in seconds per run on MislabelBench cells (family distance, 5%), over the n runs of each setup and k (k = 0 is the un-injected base set). Concurrent runs, `--fast --seed 42`, GTR+FO+I+R10.
+```{r fig-mb-runtimes}
+#| label: fig-mb-runtimes
+#| fig-cap: "Median time per stage and run on MislabelBench cells, by setup. Left: four runs at a time (family 5% cells and the base set); right: eight runs at a time."
+#| fig-height: 3.5
 
 read_tsv("data/mb_runtimes.tsv", show_col_types = FALSE) %>%
-  filter(parallel == 4) %>%
-  mutate(setup = factor(setup, c("alone", "cluster", "cluster_raxtax"), c("sativa-epang alone", "cluster", "cluster + raxtax"))) %>%
-  group_by(setup, k) %>%
-  summarise(n = n(), across(c(wall, raxml, placement, prefilter, other), median), .groups = "drop") %>%
-  arrange(setup, k) %>%
-  kable()
+  mutate(setup = factor(setup, setup_lv, setup_lb),
+         parallel = factor(parallel, c(4, 8), c("4 runs at a time, 30 CPUs each", "8 runs at a time, 15 CPUs each"))) %>%
+  group_by(setup, parallel) %>%
+  summarise(across(c(raxml, placement, prefilter, other), median), .groups = "drop") %>%
+  pivot_longer(c(raxml, placement, prefilter, other), names_to = "stage", values_to = "seconds") %>%
+  mutate(stage = factor(stage, c("other", "prefilter", "placement", "raxml"), c("other", "clustering and raxtax", "sativa-epang placement", "RAxML-NG search"))) %>%
+  ggplot(aes(setup, seconds, fill = stage)) +
+  geom_col() +
+  facet_wrap(~parallel) +
+  scale_fill_brewer(palette = "Set2", name = NULL) +
+  labs(x = NULL, y = "median seconds per run") +
+  theme(axis.text.x = element_text(angle = 20, hjust = 1))
 ```
 
-
-Over the 16 runs of each setup (the base set and the 15 injected cells) the median wall time is 155 s for sativa-epang alone (146-177 s), 198 s with clustering (170-231 s) and 179 s with clustering and raxtax (147-225 s).
+The median wall time per run is 155 s for sativa-epang alone, 198 s with clustering and 179 s with clustering and raxtax in the four-at-a-time batch, and 192 s, 235 s and 226 s in the eight-at-a-time batch (ranges 146-346 s over all runs).
 The RAxML-NG search is half to two thirds of that.
-It is longer with clustering (median 131 s against 84 s alone) although fewer sequences remain; the reason has not been examined.
-The placement is shorter with clustering (28-30 s against 50 s), and the clustering and raxtax pre-filters cost 14 s and 25 s.
+It is longer with clustering (median 131 s against 84 s alone at four at a time) although fewer sequences remain; the reason has not been examined.
+The placement is shorter with clustering (28-34 s against 50-57 s), and the clustering and raxtax pre-filters cost 14-16 s and 25-30 s.
 The same setup and k differ by tens of seconds between cells, so differences of that size are not meaningful.
 
 # References
