@@ -248,7 +248,10 @@ read_tsv("data/mb_runtimes.tsv", show_col_types = FALSE) %>%
 
 The median wall time per run is 155 s for sativa-epang alone, 198 s with clustering and 179 s with clustering and raxtax in the four-at-a-time batch, and 192 s, 235 s and 226 s in the eight-at-a-time batch (ranges 146-346 s over all runs).
 The RAxML-NG search is half to two thirds of that.
-It is longer with clustering (median 131 s against 84 s alone at four at a time) although fewer sequences remain; the reason has not been examined.
+It is longer with clustering (median 131 s against 84 s alone at four at a time) although fewer sequences remain.
+The RAxML-NG logs of five cells per setup show where: the model parameter optimisation is shorter with fewer sequences (finished after 35-67 s with clustering and 71-109 s alone), but the tree search that follows takes 56-141 s with clustering and 5-15 s alone.
+So the search phase accounts for the difference, not the cost per sequence.
+Why the search has so much less to do on the full set is untested; one possibility is that the many near-identical sequences left out by clustering make the constrained search converge at once.
 The placement is shorter with clustering (28-34 s against 50-57 s), and the clustering and raxtax pre-filters cost 14-16 s and 25-30 s.
 The same setup and k differ by tens of seconds between cells, so differences of that size are not meaningful.
 
