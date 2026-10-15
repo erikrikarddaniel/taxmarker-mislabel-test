@@ -76,7 +76,7 @@ The *E. coli* group of the test set holds 18 true *E. coli* and 3 sequences that
   Among the identical relatives of an injected sequence, none is flagged when more than half carry the wrong label (0 of 29).
   The share does not explain why `k9del1d3` (9/9) becomes `k10d3` (0/10) with one added sequence that has no identical relative.
   MislabelBench's scorer gives the same recall as ours on the local sets.
-- On MislabelBench cells (family distance, 5%, several wrong-label groups at once) clustering does not remove the signal: counting the cluster-mates of a flagged representative, 64-73% of the injected sequences are flagged at k >= 3 against 16-42% for sativa-epang alone, at the price of 58-151 added flags.
+- On MislabelBench cells (family distance, 5%, several wrong-label groups at once) clustering does not remove the signal: counting the cluster-mates of a flagged representative, 64-85% of the injected sequences are flagged at k >= 3 against 16-50% for sativa-epang alone, at the price of 58-182 added flags.
   So the clustering result depends on the injection design.
 - With clustering in front of sativa-epang, with or without raxtax, the delete sets (first draw, seed 42) give no flagged injected sequence from k = 3 to k = 10, although 2 to 5 of them are cluster representatives and so testable.
   The known mislabelled sequences flagged at k = 0 are lost as soon as sequences are injected.
@@ -766,7 +766,7 @@ The result cannot cover cases in which the mislabelled sequences are not identic
 Clustering reduces many identical mislabelled sequences to a few representatives, but the remaining ones still vote for the wrong label at the raxtax step and tie at the placement step.
 Such sequences then need to be flagged before they reach the reference tree and the placement, since the tree itself contains them.
 
-On MislabelBench cells, with many wrong-label groups present, clustering does not remove the signal: the injected sequences that share a cluster with a flagged representative are 64-73% of all injected at k >= 3, against 16-42% for sativa-epang alone, but the same expansion adds 58-151 flags on other sequences.
+On MislabelBench cells, with many wrong-label groups present, clustering does not remove the signal: the injected sequences that share a cluster with a flagged representative are 64-85% of all injected at k >= 3, against 16-50% for sativa-epang alone, but the same expansion adds 58-182 flags on other sequences.
 How much the pre-filters hide therefore depends on how the mislabelled sequences are spread over the taxonomy, and the single-group sets are the unfavourable case.
 
 **The stem signature is a candidate for that.**
