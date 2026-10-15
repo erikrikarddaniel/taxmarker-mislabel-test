@@ -6,11 +6,12 @@ METRIC_SETS    = k5 k5d2 k5d3 k10 k10d2 k10d3 k15d1 k15d2 ecsa5 ecsa10 ecsa15 as
 CONSENSUS_SETS = k0 k5 k5d2 k5d3 k10 k10d2 k10d3 k15d1 k15d2 ecsa5 ecsa10 ecsa15
 FULL_SETS      = k5 k10 ecsa5 ecsa10 ecsa15
 FLAG_SETS      = k0 $(FULL_SETS)
+SETUP_SETS     = k0 k0del10 k3del7 k5del5 k7del3 k8del2 k9del1 k10
 
 .DELETE_ON_ERROR:
 .PHONY: all
 
-all: metrics.tsv consensus.tsv full.tsv full_flags.tsv delete_metrics.tsv delete_consensus.tsv
+all: metrics.tsv consensus.tsv full.tsv full_flags.tsv delete_metrics.tsv delete_consensus.tsv setup_flags.tsv
 
 metrics.tsv: $(SCRIPTS)/auguste_metrics.py $(SEEDTEST)/queue3.done
 	cd $(SEEDTEST) && python3 $(SCRIPTS)/auguste_metrics.py 0.9 $(METRIC_SETS) > $(CURDIR)/$@
@@ -29,3 +30,6 @@ delete_metrics.tsv: $(SCRIPTS)/auguste_metrics.py $(SEEDTEST)/queue4.done $(SEED
 
 delete_consensus.tsv: $(SCRIPTS)/score.py $(SEEDTEST)/queue4.done $(SEEDTEST)/k9del1d3_seed42.results/mislabels/user-alignment.mislabels.tsv
 	cd $(SEEDTEST) && { python3 $(SCRIPTS)/score.py k0 | head -n 1; for s in $(DELETE_SETS); do python3 $(SCRIPTS)/score.py $$s $$(case $$s in k[789]*) echo 42;; esac) | tail -n +2; done; } > $(CURDIR)/$@
+
+setup_flags.tsv: $(SCRIPTS)/setup_flags.py $(SEEDTEST)/cluster_raxtax/k10_seed42.results/mislabels/user-alignment.mislabels.tsv
+	cd $(SEEDTEST) && { python3 $(SCRIPTS)/setup_flags.py cluster 0.9 $(SETUP_SETS); python3 $(SCRIPTS)/setup_flags.py cluster_raxtax 0.9 $(SETUP_SETS) | tail -n +2; } > $(CURDIR)/$@

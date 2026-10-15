@@ -1,0 +1,17 @@
+setup	set	injected	injected_testable	injected_flagged	real_flagged	background	collateral	lost_baseline
+cluster	k0	0	NA	0	2	21	0	0
+cluster	k0del10	0	NA	0	2	20	4	5
+cluster	k3del7	3	2	0	0	24	8	7
+cluster	k5del5	5	3	0	0	18	3	8
+cluster	k7del3	7	4	0	0	20	5	8
+cluster	k8del2	8	5	0	0	23	9	9
+cluster	k9del1	9	5	0	0	24	8	7
+cluster	k10	10	5	0	0	24	8	7
+cluster_raxtax	k0	0	NA	0	1	23	0	0
+cluster_raxtax	k0del10	0	NA	0	2	23	6	6
+cluster_raxtax	k3del7	3	2	0	0	26	7	5
+cluster_raxtax	k5del5	5	3	0	0	27	7	4
+cluster_raxtax	k7del3	7	4	0	0	26	7	5
+cluster_raxtax	k8del2	8	5	0	0	27	6	3
+cluster_raxtax	k9del1	9	5	0	0	26	6	4
+cluster_raxtax	k10	10	5	0	0	26	6	4

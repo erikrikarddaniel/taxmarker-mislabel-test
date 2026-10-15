@@ -41,7 +41,7 @@ library(grateful)
 - 2026-10-09: added the extra injection draws (`k5d2`, `k5d3`, `k10d2`, `k10d3`, `k15d1`, `k15d2`), the swapped pair `ecsa5/10/15` and the full-pipeline runs on the swapped pair.
 
 - 2026-10-14: added the delete design (`--drop`; `k3del7`, `k5del5`, `k0del10`) as an extra panel in the three figures, the full-pipeline `k0` and the full-pipeline points in the collateral figure.
-- 2026-10-15: added `k7del3`, `k8del2` and `k9del1` (seed 42, three draws each) to the delete design.
+- 2026-10-15: added `k7del3`, `k8del2` and `k9del1` (seed 42, three draws each) to the delete design, and the two clustering setups (with and without raxtax) on the first draw of the delete sets.
 
 # Summary
 
@@ -236,11 +236,14 @@ spread_k0del <- function(d) {
 }
 delete_metrics <- read_tsv("data/delete_metrics.tsv", show_col_types = FALSE) %>% mutate(seed = as.character(seed))
 delete_consensus <- read_tsv("data/delete_consensus.tsv", show_col_types = FALSE)
+clus_names <- c(cluster = "clustering + sativa-epang", cluster_raxtax = "clustering + raxtax + sativa-epang")
+setup_flags <- read_tsv("data/setup_flags.tsv", show_col_types = FALSE) %>% mutate(setup = clus_names[setup])
+clus_colours <- c(scales::hue_pal()(3), "#984EA3")
 ```
 
 ```{r fig-recall}
 #| label: fig-recall
-#| fig-cap: "Fraction of injected sequences flagged against k. Lines join the draws of one setup; the bar on sativa-epang alone spans seeds 42-44. Clustering + raxtax + sativa-epang is seed 42 and first draw only, and counts only injected sequences that are themselves flagged. The second panel is the delete design: 10 true donors are kept whatever k is (k = 3, 5, 7, 8, 9 and, because it leaves 10 donors too, the moved k = 10). The k = 7, 8 and 9 points are seed 42 only, so they have no bar. All panels share the x axis."
+#| fig-cap: "Fraction of injected sequences flagged against k. Lines join the draws of one setup; the bar on sativa-epang alone spans seeds 42-44. The two clustering setups are seed 42 and first draw only, and count only injected sequences that are themselves flagged. The second panel is the delete design: 10 true donors are kept whatever k is (k = 3, 5, 7, 8, 9 and, because it leaves 10 donors too, the moved k = 10). The k = 7, 8 and 9 points are seed 42 only, so they have no bar. All panels share the x axis."
 #| fig-width: 9
 #| fig-height: 6.5
 
@@ -258,14 +261,17 @@ full <- read_tsv("data/full.tsv", show_col_types = FALSE) %>%
   group_by(set) %>%
   summarise(setup = "clustering + raxtax + sativa-epang", recall = sum(flagged_by != "-") / sum(stands_for_injected), .groups = "drop") %>%
   mutate(lo = recall, hi = recall)
-d <- bind_rows(sativa, consensus, full) %>% left_join(setname(unique(.$set)), by = "set") %>%
+clus <- setup_flags %>% filter(injected > 0, !(setup == clus_names[2] & set %in% full$set)) %>%
+  transmute(set, setup, recall = injected_flagged / injected, lo = recall, hi = recall)
+d <- bind_rows(sativa, consensus, full, clus) %>% left_join(setname(unique(.$set)), by = "set") %>%
   with_k10_delete() %>%
-  mutate(setup = factor(setup, c("sativa-epang alone", "sativa-epang, all 3 seeds agree", "clustering + raxtax + sativa-epang")),
+  mutate(setup = factor(setup, c("sativa-epang alone", "sativa-epang, all 3 seeds agree", clus_names[2], clus_names[1])),
          pair = factor(pair, pair_levels))
-d <- mutate(d, x = k + c(-0.3, 0, 0.3)[as.integer(setup)] + (as.integer(draw) - 2) * 0.08)
+d <- mutate(d, x = k + c(-0.3, -0.1, 0.1, 0.3)[as.integer(setup)] + (as.integer(draw) - 2) * 0.08)
 p <- ggplot(d, aes(x, recall, colour = setup, linetype = draw, shape = draw, group = interaction(setup, draw))) +
   geom_line() + geom_linerange(aes(ymin = lo, ymax = hi), linetype = "solid") +
   geom_point() + scale_linetype_manual(values = c("solid", "dashed", "dotted")) +
+  scale_colour_manual(values = clus_colours) +
   facet_wrap(~pair, labeller = label_parsed) +
   scale_x_continuous(breaks = c(3, 5, 7, 8, 9, 10, 15), expand = expansion(add = 0.8)) + scale_y_continuous(limits = c(0, 1), labels = scales::percent) +
   scale_shape_manual(values = c(16, 17, 15)) + labs(x = "Injected sequences (k)", y = "Injected sequences flagged", colour = "Setup", linetype = "Draw", shape = "Draw") +
@@ -276,17 +282,18 @@ p
 
 ```{r fig-background}
 #| label: fig-background
-#| fig-cap: "Flags other than the injected sequences, at lwr above 0.9, against k, with k = 0 as reference. Top: flags that are neither injected nor one of the three known mislabelled sequences. Bottom: how many of the three known mislabelled sequences are flagged. Bars span seeds 42-44 (the k = 7 points in the delete design are seed 42 only, so the all-seeds rule equals seed 42 there); clustering + raxtax + sativa-epang is seed 42, first draw only. In the delete design (second column) the k = 0 point is `k0del10`, ten donors deleted and nothing injected."
+#| fig-cap: "Flags other than the injected sequences, at lwr above 0.9, against k, with k = 0 as reference. Top: flags that are neither injected nor one of the three known mislabelled sequences. Bottom: how many of the three known mislabelled sequences are flagged. Bars span seeds 42-44 (the k = 7 points in the delete design are seed 42 only, so the all-seeds rule equals seed 42 there); the two clustering setups are seed 42, first draw only. In the delete design (second column) the k = 0 point is `k0del10`, ten donors deleted and nothing injected."
 #| fig-width: 9
 #| fig-height: 7
 
-setups <- c("sativa-epang alone", "sativa-epang, all 3 seeds agree", "clustering + raxtax + sativa-epang")
+setups <- c("sativa-epang alone", "sativa-epang, all 3 seeds agree", clus_names[2], clus_names[1])
 cons <- read_tsv("data/consensus.tsv", show_col_types = FALSE) %>% bind_rows(delete_consensus) %>% filter(lwr == 0.9, rule == "all" | grepl("^seed", rule)) %>%
   mutate(setup = ifelse(rule == "all", setups[2], setups[1])) %>%
   group_by(set, setup) %>%
   summarise(across(c(background, real_found), list(m = mean, lo = min, hi = max)), .groups = "drop")
-full <- read_tsv("data/full_flags.tsv", show_col_types = FALSE) %>%
-  transmute(set, setup = setups[3], background_m = background, background_lo = background, background_hi = background,
+full <- read_tsv("data/full_flags.tsv", show_col_types = FALSE) %>% mutate(setup = setups[3]) %>%
+  bind_rows(filter(setup_flags, !(setup == setups[3] & set %in% read_tsv("data/full_flags.tsv", show_col_types = FALSE)$set))) %>%
+  transmute(set, setup, background_m = background, background_lo = background, background_hi = background,
             real_found_m = real_flagged, real_found_lo = real_flagged, real_found_hi = real_flagged)
 d <- bind_rows(cons, full) %>% left_join(setname(unique(.$set)), by = "set") %>% with_k10_delete()
 k0 <- filter(d, set == "k0") %>% select(-pair, -draw, -k)
@@ -296,9 +303,10 @@ d <- bind_rows(spread_k0del(d), k0) %>%
   pivot_longer(c(starts_with("background"), starts_with("real_found")), names_to = c("measure", ".value"), names_pattern = "(background|real_found)_(.*)") %>%
   mutate(setup = factor(setup, setups), pair = factor(pair, pair_levels),
          measure = factor(measure, c("background", "real_found"), c("Flags that are neither injected nor known", "Known mislabelled flagged (of 3)")),
-         x = k + c(-0.3, 0, 0.3)[as.integer(setup)] + (as.integer(draw) - 2) * 0.08)
+         x = k + c(-0.3, -0.1, 0.1, 0.3)[as.integer(setup)] + (as.integer(draw) - 2) * 0.08)
 p <- ggplot(d, aes(x, m, colour = setup, linetype = draw, shape = draw, group = interaction(setup, draw))) +
   geom_line() + geom_linerange(aes(ymin = lo, ymax = hi), linetype = "solid") + geom_point() +
+  scale_colour_manual(values = clus_colours) +
   scale_linetype_manual(values = c("solid", "dashed", "dotted")) + scale_shape_manual(values = c(16, 17, 15)) +
   facet_grid(measure ~ pair, scales = "free_y", labeller = labeller(pair = label_parsed, measure = label_wrap_gen(24))) +
   scale_x_continuous(breaks = c(0, 3, 5, 7, 8, 9, 10, 15), expand = expansion(add = 0.8)) + expand_limits(y = 0) +
@@ -310,7 +318,7 @@ p
 
 ```{r fig-collateral}
 #| label: fig-collateral
-#| fig-cap: "Newly flagged background sequences and lost baseline flags against k at lwr above 0.9, compared with the same setup and seed without injection. Bars span seeds 42-44 (seed 42 only for the last two pairs and for the delete design at k = 7-9); clustering + raxtax + sativa-epang is seed 42, first draw only, compared with its own k = 0 run. The grey band is the range between two repeated sativa-epang runs without injection. The second column is the delete design; its k = 0 point is `k0del10`, ten donors deleted and nothing injected."
+#| fig-cap: "Newly flagged background sequences and lost baseline flags against k at lwr above 0.9, compared with the same setup and seed without injection. Bars span seeds 42-44 (seed 42 only for the last two pairs and for the delete design at k = 7-9); the two clustering setups are seed 42, first draw only, each compared with its own k = 0 run. The grey band is the range between two repeated sativa-epang runs without injection. The second column is the delete design; its k = 0 point is `k0del10`, ten donors deleted and nothing injected."
 #| fig-width: 15
 #| fig-height: 6.5
 
@@ -319,27 +327,28 @@ noise <- m %>% filter(grepl(" vs ", set)) %>%
   summarise(across(c(collateral, lost_baseline), list(lo = min, hi = max))) %>%
   pivot_longer(everything(), names_to = c("measure", ".value"), names_pattern = "(collateral|lost_baseline)_(.*)")
 lab <- c(collateral = "Newly flagged background sequences", lost_baseline = "Baseline flags lost")
-setups <- c("sativa-epang alone", "clustering + raxtax + sativa-epang")
+setups <- c("sativa-epang alone", clus_names[2], clus_names[1])
 d <- m %>% filter(!grepl(" vs ", set)) %>%
   bind_rows(delete_metrics) %>%
   group_by(set) %>%
   summarise(across(c(collateral, lost_baseline), list(m = mean, lo = min, hi = max)), .groups = "drop") %>%
   mutate(setup = setups[1])
-full <- read_tsv("data/full_flags.tsv", show_col_types = FALSE) %>%
+full <- read_tsv("data/full_flags.tsv", show_col_types = FALSE) %>% mutate(setup = setups[2]) %>%
+  bind_rows(filter(setup_flags, !(setup == setups[2] & set %in% read_tsv("data/full_flags.tsv", show_col_types = FALSE)$set))) %>%
   filter(set != "k0") %>%
-  transmute(set, setup = setups[2], across(c(collateral, lost_baseline), list(m = identity, lo = identity, hi = identity)))
+  transmute(set, setup, across(c(collateral, lost_baseline), list(m = identity, lo = identity, hi = identity)))
 d <- bind_rows(d, full) %>%
   left_join(setname(unique(.$set)), by = "set") %>%
   with_k10_delete() %>%
   spread_k0del() %>%
   pivot_longer(c(starts_with("collateral"), starts_with("lost_baseline")), names_to = c("measure", ".value"), names_pattern = "(collateral|lost_baseline)_(.*)") %>%
   mutate(pair = factor(pair, pair_levels), measure = factor(measure, names(lab), lab), setup = factor(setup, setups),
-         x = k + (as.integer(setup) - 1.5) * 0.4 + (as.integer(draw) - 2) * 0.12)
+         x = k + (as.integer(setup) - 2) * 0.4 + (as.integer(draw) - 2) * 0.12)
 noise <- mutate(noise, measure = factor(measure, names(lab), lab))
 p <- ggplot(d, aes(x, m, colour = setup, linetype = draw, shape = draw, group = interaction(setup, draw))) +
   geom_rect(data = noise, aes(ymin = lo, ymax = hi), xmin = -Inf, xmax = Inf, inherit.aes = FALSE, fill = "grey80", alpha = 0.6) +
   geom_line() + geom_linerange(aes(ymin = lo, ymax = hi), linetype = "solid") + geom_point() +
-  scale_colour_manual(values = scales::hue_pal()(3)[c(1, 3)]) +
+  scale_colour_manual(values = clus_colours[c(1, 3, 4)]) +
   scale_linetype_manual(values = c("solid", "dashed", "dotted")) + scale_shape_manual(values = c(16, 17, 15)) +
   facet_grid(measure ~ pair, labeller = labeller(pair = label_parsed, measure = label_wrap_gen(24))) +
   scale_x_continuous(breaks = c(0, 3, 5, 7, 8, 9, 10, 15), expand = expansion(add = 0.8)) + expand_limits(y = 0) +
@@ -437,6 +446,29 @@ At k = 7-9 they are 2-6 (k = 7 and 8) and 4, 13 and 4 (k = 9, draws 1-3; seed 42
 In that draw (`k9del1d2`) the one known mislabelled sequence that is otherwise flagged is lost as well.
 The control `k0del10` gives 5-11 as well, so deleting ten sequences alone moves as many flags as injecting five; the part of the collateral flags that injection causes is therefore not separable from deletion at this size.
 All three known mislabelled sequences, `SQRB` among them, behave as at `k0`: the same one is flagged in every delete set except `k9del1d2`.
+
+### Clustering on the delete sets
+
+The two clustering setups were run on the first draw of each delete set (`k3del7` to `k9del1`), on the moved `k10` and on both controls (`k0`, `k0del10`), seed 42 only: clustering + sativa-epang with raxtax skipped, and clustering + raxtax + sativa-epang, the pipeline defaults.
+Only cluster representatives are placed, so an injected sequence is testable only if it is a representative.
+
+```{r tbl-clustering-delete}
+#| label: tbl-clustering-delete
+#| tbl-cap: Clustering setups on the first draw of the delete sets and on the moved k = 10, seed 42, lwr > 0.9. Testable = injected sequences that are cluster representatives. Collateral and lost baseline are against the same setup's k = 0.
+
+setup_flags %>%
+  filter(injected > 0) %>%
+  transmute(set, setup = ifelse(setup == clus_names[1], "cluster", "cluster + raxtax"), injected, testable = injected_testable,
+            flagged = injected_flagged, `known mislabelled` = real_flagged, collateral, `lost baseline` = lost_baseline) %>%
+  pivot_wider(names_from = setup, values_from = c(flagged, `known mislabelled`, collateral, `lost baseline`), names_vary = "slowest") %>%
+  kable()
+```
+
+No injected sequence is flagged in any set, from k = 3 to k = 10, with or without raxtax.
+Of the injected sequences 2 of 3 (k = 3) to 5 of 10 (k = 10) are representatives, so 2 to 5 injected sequences were testable and none was flagged.
+The known mislabelled sequences flagged at k = 0 (two with cluster, one with cluster + raxtax) are lost as well as soon as sequences are injected, from k = 3.
+Collateral and lost baseline are 3-9 in both setups, within the noise of the controls.
+Clustering therefore removes the signal in the delete design as well, even where donors are not depleted, so the loss is not a matter of true sequences running out.
 
 ## Theme 1b: keeping mislabelled sequences from outvoting true sequences
 
