@@ -83,6 +83,26 @@ Whether that is because the groups are spread over many recipients, or because t
 It also means that the clustering result depends on how the injected sequences are spread, which the single-group design cannot show.
 Only one cell per k and one run per cell are available, so these are single observations.
 
+## Runtime
+
+Runtimes come from the Nextflow execution traces of the runs above (`scripts/mb_runtimes.py`).
+Four runs shared the 128-core server at a time, each with 30 CPUs and 150 GB, so the times are indicative and not a speed benchmark.
+Wall is the time from the first task submitted to the last task finished.
+The stage columns sum task durations: RAxML-NG search, sativa-epang placement (reference, tasks, placement, scoring and report), the clustering and raxtax pre-filters, and everything else (taxonomy, name check, gap filter, MultiQC).
+
+```{r tbl-mb-runtimes}
+#| label: tbl-mb-runtimes
+#| tbl-cap: Median runtime in seconds per run on MislabelBench cells (family distance, 5%), over the n finished runs of each setup and k (k = 0 is the un-injected base set). Concurrent runs, `--fast --seed 42`, GTR+FO+I+R10.
+
+read_tsv("data/mb_runtimes.tsv", show_col_types = FALSE) %>%
+  mutate(setup = factor(setup, c("alone", "cluster", "cluster_raxtax"), c("sativa-epang alone", "cluster", "cluster + raxtax"))) %>%
+  group_by(setup, k) %>%
+  summarise(n = n(), across(c(wall, raxml, placement, prefilter, other), median), .groups = "drop") %>%
+  arrange(setup, k) %>%
+  kable()
+```
+
+
 # References
 
 ```{r}

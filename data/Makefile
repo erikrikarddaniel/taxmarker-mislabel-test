@@ -49,3 +49,7 @@ mb_score.tsv: $(SCRIPTS)/mb_score.py
 MBCELLS ?= $(HOME)/tmp/mbcells
 mb_cells.tsv: $(SCRIPTS)/mb_cells.py
 	cd $(MBCELLS) && python3 $(SCRIPTS)/mb_cells.py 0.9 > $(CURDIR)/$@
+
+# Execution traces copied from southern:projects/taxmarker/mb/<setup>/*_seed42.results/pipeline_info/ to $(MBCELLS)/traces/<setup>__<cell>.trace.txt
+mb_runtimes.tsv: $(SCRIPTS)/mb_runtimes.py
+	cd $(MBCELLS) && python3 $(SCRIPTS)/mb_runtimes.py > $(CURDIR)/$@
