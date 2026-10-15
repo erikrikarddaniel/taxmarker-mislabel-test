@@ -215,6 +215,78 @@ k5del5d3	0.99	seed 44	26	5	5	1	20	0.62
 k5del5d3	0.99	any	33	5	5	1	27	0.62
 k5del5d3	0.99	majority	23	5	5	1	17	0.62
 k5del5d3	0.99	all	16	5	5	1	10	0.62
+k7del3	0.0	seed 42	54	7	7	1	46	NA
+k7del3	0.0	any	54	7	7	1	46	NA
+k7del3	0.0	majority	54	7	7	1	46	NA
+k7del3	0.0	all	54	7	7	1	46	NA
+k7del3	0.9	seed 42	25	7	7	1	17	NA
+k7del3	0.9	any	25	7	7	1	17	NA
+k7del3	0.9	majority	25	7	7	1	17	NA
+k7del3	0.9	all	25	7	7	1	17	NA
+k7del3	0.95	seed 42	22	7	7	1	14	NA
+k7del3	0.95	any	22	7	7	1	14	NA
+k7del3	0.95	majority	22	7	7	1	14	NA
+k7del3	0.95	all	22	7	7	1	14	NA
+k7del3	0.97	seed 42	22	7	7	1	14	NA
+k7del3	0.97	any	22	7	7	1	14	NA
+k7del3	0.97	majority	22	7	7	1	14	NA
+k7del3	0.97	all	22	7	7	1	14	NA
+k7del3	0.98	seed 42	22	7	7	1	14	NA
+k7del3	0.98	any	22	7	7	1	14	NA
+k7del3	0.98	majority	22	7	7	1	14	NA
+k7del3	0.98	all	22	7	7	1	14	NA
+k7del3	0.99	seed 42	22	7	7	1	14	NA
+k7del3	0.99	any	22	7	7	1	14	NA
+k7del3	0.99	majority	22	7	7	1	14	NA
+k7del3	0.99	all	22	7	7	1	14	NA
+k7del3d2	0.0	seed 42	52	7	7	1	44	NA
+k7del3d2	0.0	any	52	7	7	1	44	NA
+k7del3d2	0.0	majority	52	7	7	1	44	NA
+k7del3d2	0.0	all	52	7	7	1	44	NA
+k7del3d2	0.9	seed 42	27	7	7	1	19	NA
+k7del3d2	0.9	any	27	7	7	1	19	NA
+k7del3d2	0.9	majority	27	7	7	1	19	NA
+k7del3d2	0.9	all	27	7	7	1	19	NA
+k7del3d2	0.95	seed 42	26	7	7	1	18	NA
+k7del3d2	0.95	any	26	7	7	1	18	NA
+k7del3d2	0.95	majority	26	7	7	1	18	NA
+k7del3d2	0.95	all	26	7	7	1	18	NA
+k7del3d2	0.97	seed 42	26	7	7	1	18	NA
+k7del3d2	0.97	any	26	7	7	1	18	NA
+k7del3d2	0.97	majority	26	7	7	1	18	NA
+k7del3d2	0.97	all	26	7	7	1	18	NA
+k7del3d2	0.98	seed 42	26	7	7	1	18	NA
+k7del3d2	0.98	any	26	7	7	1	18	NA
+k7del3d2	0.98	majority	26	7	7	1	18	NA
+k7del3d2	0.98	all	26	7	7	1	18	NA
+k7del3d2	0.99	seed 42	26	7	7	1	18	NA
+k7del3d2	0.99	any	26	7	7	1	18	NA
+k7del3d2	0.99	majority	26	7	7	1	18	NA
+k7del3d2	0.99	all	26	7	7	1	18	NA
+k7del3d3	0.0	seed 42	50	7	7	1	42	NA
+k7del3d3	0.0	any	50	7	7	1	42	NA
+k7del3d3	0.0	majority	50	7	7	1	42	NA
+k7del3d3	0.0	all	50	7	7	1	42	NA
+k7del3d3	0.9	seed 42	23	7	7	1	15	NA
+k7del3d3	0.9	any	23	7	7	1	15	NA
+k7del3d3	0.9	majority	23	7	7	1	15	NA
+k7del3d3	0.9	all	23	7	7	1	15	NA
+k7del3d3	0.95	seed 42	23	7	7	1	15	NA
+k7del3d3	0.95	any	23	7	7	1	15	NA
+k7del3d3	0.95	majority	23	7	7	1	15	NA
+k7del3d3	0.95	all	23	7	7	1	15	NA
+k7del3d3	0.97	seed 42	22	7	7	1	14	NA
+k7del3d3	0.97	any	22	7	7	1	14	NA
+k7del3d3	0.97	majority	22	7	7	1	14	NA
+k7del3d3	0.97	all	22	7	7	1	14	NA
+k7del3d3	0.98	seed 42	22	7	7	1	14	NA
+k7del3d3	0.98	any	22	7	7	1	14	NA
+k7del3d3	0.98	majority	22	7	7	1	14	NA
+k7del3d3	0.98	all	22	7	7	1	14	NA
+k7del3d3	0.99	seed 42	22	7	7	1	14	NA
+k7del3d3	0.99	any	22	7	7	1	14	NA
+k7del3d3	0.99	majority	22	7	7	1	14	NA
+k7del3d3	0.99	all	22	7	7	1	14	NA
 k0del10	0.0	seed 42	47	0	0	1	46	0.52
 k0del10	0.0	seed 43	50	0	0	1	49	0.52
 k0del10	0.0	seed 44	46	0	0	1	45	0.52

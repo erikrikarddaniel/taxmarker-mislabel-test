@@ -41,6 +41,7 @@ library(grateful)
 - 2026-10-09: added the extra injection draws (`k5d2`, `k5d3`, `k10d2`, `k10d3`, `k15d1`, `k15d2`), the swapped pair `ecsa5/10/15` and the full-pipeline runs on the swapped pair.
 
 - 2026-10-14: added the delete design (`--drop`; `k3del7`, `k5del5`, `k0del10`) as an extra panel in the three figures, the full-pipeline `k0` and the full-pipeline points in the collateral figure.
+- 2026-10-15: added `k7del3` (seed 42, three draws) to the delete design.
 
 # Summary
 
@@ -121,7 +122,7 @@ Deleted sequences that were flagged at `k0` do not count as lost baseline flags.
 | `k15d1`, `k15d2` | *S. aureus* | *E. coli* | 15 | two draws |
 | `asaia5/10`, `marm5/10` | *S. aureus* | *Asaia* sp037151935, *E. marmotae* | 5, 10 | seed 1 |
 | `ecsa5/10/15` | *E. coli* | *S. aureus* | 5, 10, 15 | seed 1 |
-| `k3del7`, `k5del5` | *S. aureus* | *E. coli* | 3, 5 | 3 draws; 7 and 5 other donors deleted |
+| `k3del7`, `k5del5`, `k7del3` | *S. aureus* | *E. coli* | 3, 5, 7 | 3 draws; 7, 5 and 3 other donors deleted; `k7del3` seed 42 only |
 | `k0del10` | *S. aureus* | *E. coli* | 0 | 10 donors deleted, nothing injected |
 
 : Injected sets. {#tbl-sets}
@@ -239,7 +240,7 @@ delete_consensus <- read_tsv("data/delete_consensus.tsv", show_col_types = FALSE
 
 ```{r fig-recall}
 #| label: fig-recall
-#| fig-cap: "Fraction of injected sequences flagged against k. Lines join the draws of one setup; the bar on sativa-epang alone spans seeds 42-44. Clustering + raxtax + sativa-epang is seed 42 and first draw only, and counts only injected sequences that are themselves flagged. The second panel is the delete design: 10 true donors are kept whatever k is (k = 3, 5 and, because it leaves 10 donors too, the moved k = 10). All panels share the x axis."
+#| fig-cap: "Fraction of injected sequences flagged against k. Lines join the draws of one setup; the bar on sativa-epang alone spans seeds 42-44. Clustering + raxtax + sativa-epang is seed 42 and first draw only, and counts only injected sequences that are themselves flagged. The second panel is the delete design: 10 true donors are kept whatever k is (k = 3, 5, 7 and, because it leaves 10 donors too, the moved k = 10). The k = 7 points are seed 42 only, so they have no bar. All panels share the x axis."
 #| fig-width: 9
 #| fig-height: 6.5
 
@@ -266,7 +267,7 @@ p <- ggplot(d, aes(x, recall, colour = setup, linetype = draw, shape = draw, gro
   geom_line() + geom_linerange(aes(ymin = lo, ymax = hi), linetype = "solid") +
   geom_point() + scale_linetype_manual(values = c("solid", "dashed", "dotted")) +
   facet_wrap(~pair, labeller = label_parsed) +
-  scale_x_continuous(breaks = c(3, 5, 10, 15), expand = expansion(add = 0.8)) + scale_y_continuous(limits = c(0, 1), labels = scales::percent) +
+  scale_x_continuous(breaks = c(3, 5, 7, 10, 15), expand = expansion(add = 0.8)) + scale_y_continuous(limits = c(0, 1), labels = scales::percent) +
   scale_shape_manual(values = c(16, 17, 15)) + labs(x = "Injected sequences (k)", y = "Injected sequences flagged", colour = "Setup", linetype = "Draw", shape = "Draw") +
   theme_bw() + theme(legend.position = "bottom", legend.box = "vertical")
 
@@ -275,7 +276,7 @@ p
 
 ```{r fig-background}
 #| label: fig-background
-#| fig-cap: "Flags other than the injected sequences, at lwr above 0.9, against k, with k = 0 as reference. Top: flags that are neither injected nor one of the three known mislabelled sequences. Bottom: how many of the three known mislabelled sequences are flagged. Bars span seeds 42-44; clustering + raxtax + sativa-epang is seed 42, first draw only. In the delete design (second column) the k = 0 point is `k0del10`, ten donors deleted and nothing injected."
+#| fig-cap: "Flags other than the injected sequences, at lwr above 0.9, against k, with k = 0 as reference. Top: flags that are neither injected nor one of the three known mislabelled sequences. Bottom: how many of the three known mislabelled sequences are flagged. Bars span seeds 42-44 (the k = 7 points in the delete design are seed 42 only, so the all-seeds rule equals seed 42 there); clustering + raxtax + sativa-epang is seed 42, first draw only. In the delete design (second column) the k = 0 point is `k0del10`, ten donors deleted and nothing injected."
 #| fig-width: 9
 #| fig-height: 7
 
@@ -300,7 +301,7 @@ p <- ggplot(d, aes(x, m, colour = setup, linetype = draw, shape = draw, group = 
   geom_line() + geom_linerange(aes(ymin = lo, ymax = hi), linetype = "solid") + geom_point() +
   scale_linetype_manual(values = c("solid", "dashed", "dotted")) + scale_shape_manual(values = c(16, 17, 15)) +
   facet_grid(measure ~ pair, scales = "free_y", labeller = labeller(pair = label_parsed, measure = label_wrap_gen(24))) +
-  scale_x_continuous(breaks = c(0, 3, 5, 10, 15), expand = expansion(add = 0.8)) + expand_limits(y = 0) +
+  scale_x_continuous(breaks = c(0, 3, 5, 7, 10, 15), expand = expansion(add = 0.8)) + expand_limits(y = 0) +
   labs(x = "Injected sequences (k)", y = NULL, colour = "Setup", linetype = "Draw", shape = "Draw") +
   theme_bw() + theme(legend.position = "bottom", legend.box = "vertical")
 
@@ -309,7 +310,7 @@ p
 
 ```{r fig-collateral}
 #| label: fig-collateral
-#| fig-cap: "Newly flagged background sequences and lost baseline flags against k at lwr above 0.9, compared with the same setup and seed without injection. Bars span seeds 42-44 (seed 42 only for the last two pairs); clustering + raxtax + sativa-epang is seed 42, first draw only, compared with its own k = 0 run. The grey band is the range between two repeated sativa-epang runs without injection. The second column is the delete design; its k = 0 point is `k0del10`, ten donors deleted and nothing injected."
+#| fig-cap: "Newly flagged background sequences and lost baseline flags against k at lwr above 0.9, compared with the same setup and seed without injection. Bars span seeds 42-44 (seed 42 only for the last two pairs and for the delete design at k = 7); clustering + raxtax + sativa-epang is seed 42, first draw only, compared with its own k = 0 run. The grey band is the range between two repeated sativa-epang runs without injection. The second column is the delete design; its k = 0 point is `k0del10`, ten donors deleted and nothing injected."
 #| fig-width: 15
 #| fig-height: 6.5
 
@@ -341,7 +342,7 @@ p <- ggplot(d, aes(x, m, colour = setup, linetype = draw, shape = draw, group = 
   scale_colour_manual(values = scales::hue_pal()(3)[c(1, 3)]) +
   scale_linetype_manual(values = c("solid", "dashed", "dotted")) + scale_shape_manual(values = c(16, 17, 15)) +
   facet_grid(measure ~ pair, labeller = labeller(pair = label_parsed, measure = label_wrap_gen(24))) +
-  scale_x_continuous(breaks = c(0, 3, 5, 10, 15), expand = expansion(add = 0.8)) + expand_limits(y = 0) +
+  scale_x_continuous(breaks = c(0, 3, 5, 7, 10, 15), expand = expansion(add = 0.8)) + expand_limits(y = 0) +
   labs(x = "Injected sequences (k)", y = "Sequences", colour = "Setup", linetype = "Draw", shape = "Draw") +
   theme_bw() + theme(legend.position = "bottom", legend.box = "vertical", strip.text.x = element_text(size = 7.5))
 p
@@ -400,7 +401,7 @@ The delete sets keep 10 true *S. aureus* sequences whatever k is, and `k0del10` 
 
 ```{r tbl-delete}
 #| label: tbl-delete
-#| tbl-cap: Moved and delete designs at lwr > 0.9, sativa-epang alone, ranges over seeds 42-44 and over the three draws. Remaining = true S. aureus sequences left in the donor species. Known mislabelled = how many of the three flagged in all three seeds.
+#| tbl-cap: Moved and delete designs at lwr > 0.9, sativa-epang alone, ranges over seeds 42-44 and over the three draws (seed 42 only at k = 7). Remaining = true S. aureus sequences left in the donor species. Known mislabelled = how many of the three flagged in all three seeds.
 
 dm <- read_tsv("data/delete_metrics.tsv", show_col_types = FALSE) %>% mutate(seed = as.character(seed))
 dc <- read_tsv("data/delete_consensus.tsv", show_col_types = FALSE) %>% filter(lwr == 0.9, rule == "all")
@@ -424,11 +425,13 @@ With 10 true sequences left, recall is 3/3 at k = 3 and 5/5 at k = 5 in every dr
 The moved design with the same 10 left, `k10`, gives 8/10 and 0/10, and `k5` with 15 left gives 5/5.
 So taking the donor species from 15 to 10 at k = 5 changes nothing, and the number injected seems to matter more than how many true sequences remain.
 The moved `k10` sets leave 10 donors as well, so they are the k = 10 end of the delete design, and recall there collapses.
-The delete design with 10 donors left therefore gives 5/5 up to k = 5 and 0-8/10 at k = 10; k = 6-9 would show where it breaks.
+The k = 7 sets (seed 42, three draws) give 7/7 in every draw, including draws 2 and 3, which lose all ten injected sequences at k = 10.
+The delete design with 10 donors left therefore gives full recall up to k = 7 and 0-8/10 at k = 10; the break lies between 7 and 10, and k = 8 and 9 would locate it.
 More than 10 injected sequences cannot keep 10 donors, since there are only 20.
 The ratio of injected to remaining sequences is a candidate explanation that fits (0.3 for `k5`, 0.5 for `k5del5`, 1.0 for `k10`, 3.0 for `k15`), but nothing here tests it.
 
 Collateral flags in the delete sets are 4-6 at k = 3, within the noise floor, and 5-11 at k = 5.
+At k = 7 they are 6, 6 and 2 in the three draws (seed 42), within or below the 5-11 of the `k0del10` control.
 The control `k0del10` gives 5-11 as well, so deleting ten sequences alone moves as many flags as injecting five; the part of the collateral flags that injection causes is therefore not separable from deletion at this size.
 All three known mislabelled sequences, `SQRB` among them, behave as at `k0`: the same one is flagged in every delete set.
 
