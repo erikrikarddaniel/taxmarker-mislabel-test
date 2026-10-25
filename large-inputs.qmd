@@ -1,0 +1,371 @@
+---
+title: "Placing 240,000 sequences with taxmarker: clustering, raxtax and divided placement"
+author: "matricaria.suaveolens@gmail.com"
+date: "`r format(Sys.time(), '%Y-%m-%d')`"
+format:
+  html:
+    code-fold: true
+    toc: true
+    embed-resources: true
+bibliography:
+  - bibliography.bib
+  - tools.bib
+---
+
+```{r setup}
+#| label: setup
+#| echo: false
+
+knitr::opts_chunk$set(echo = TRUE, fig.path = "figures/large-", fig.width = 9)
+ggplot2::theme_set(ggplot2::theme_bw())
+```
+
+```{r libraries}
+#| label: libraries
+#| message: false
+#| include: false
+
+library(dplyr, warn.conflicts = FALSE)
+library(ggplot2)
+library(knitr)
+library(readr)
+library(tidyr)
+```
+
+# Version history
+
+- 2026-10-25: first draft, written from the analysis sessions of 2026-10-23 to 2026-10-25.
+  The `--cluster_identity 0.99` run is not included yet.
+
+# Summary
+
+The default `--cluster_identity 1.0` run of nf-core/taxmarker on all 1,118,534 bacterial 16S sequences of GTDB release 232 places 239,806 sequences and needs 414.5 GB for each of 25 placement folds, about 17.5 hours in all.
+We asked how much of that cost can be removed, and what is lost.
+
+- **Clustering at 0.97** cuts the placed sequences to 92,406, one fold to 135.6 GB and 4.5 minutes, and the whole pipeline to 2 h 17 min (@tbl-funnel).
+  It finds 83-93% of the flags at phylum to family level, 56% at genus level and 39% at species level (@tbl-clustering).
+  Below 0.97 the tree barely shrinks, because every taxon keeps at least one representative (@tbl-sweep).
+- **The raxtax prefilter** should stay on.
+  Without it SATIVA flags 6,222 more sequences, and among the flags that BLAST can judge most of the extra ones point at the declared taxon (@tbl-raxtax).
+- **Dividing the tree for placement** does not recover what clustering loses.
+  Leave-one-out inside parts of the tree finds 30-65% of the whole-tree flags at phylum to family level and 6-7% at genus level, whether the part has 4 or 50 outgroups (@fig-methods).
+  A backbone of one representative per genus finds 71-86% at phylum to family level and 35% at genus level (@fig-methods).
+  Only the memory use falls (about 55 GB per fold for the backbone).
+- **The model used by sativa-epang** was not that of the reference tree in these runs (nf-core/taxmarker#64, fixed in #67).
+  A rerun at 0.97 under the correct model changes 17-18% of the flags (10% at phylum and 37% at species level), mostly flags with a low placement weight, and leaves memory and time unchanged (@tbl-fixedmodel).
+
+# Introduction
+
+taxmarker places each sequence back into a reference tree with sativa-epang after removing it from the tree (leave-one-out), and flags it if the placement disagrees with the declared taxonomy.
+The memory use of the placement grows with the number of sequences in the tree.
+For a database of hundreds of thousands of sequences, the memory a single placement job needs is the limit on what can be run.
+There are three ways to make the tree smaller or the placement lighter: cluster the input first (`--cluster_identity`), remove sequences with a prefilter (raxtax), or place against parts of the tree.
+This report measures the first two on one large run and tests the third without building it into the pipeline.
+The small injected test sets of `taxmarker-mislabel-tests.qmd` are a different question and are not used here.
+
+# Materials and Methods
+
+## Input and runs
+
+All runs used the 1,118,534 bacterial sequences in GTDB's `ssu_all_r232.fna.gz` [@gtdb], with `--upstream GTDB` weights and the same tree search settings and seed.
+The runs differ in `--cluster_identity` (1.0 and 0.97) and in whether raxtax was on (`--skip_raxtax`).
+The reference tree was searched by the divided tree search of nf-core/taxmarker#66 and the placement ran in 25 folds, one per job.
+Runs were done on a shared server with 128 cores.
+A run is named by its output directory below: `bac-ssu-r232-1` (identity 1.0), `bac-ssu-r232-1-0.97`, `bac-ssu-r232-1-0.97-skip_raxtax` and `bac-ssu-r232-1-0.97-fixedmodel`.
+The code of the first runs is tagged `run/taxmarker-bacteria-2026-10` in the fork and that of the last run `run/taxmarker-bacteria-fixedmodel-2026-10`, which adds the change of nf-core/taxmarker#67.
+
+A flag has a mismatch rank, the highest rank at which the declared and the proposed lineage differ: 2 phylum, 3 class, 4 order, 5 family, 6 genus, 7 species.
+SATIVA flags and raxtax flags are counted separately; raxtax flags are all at genus level.
+
+## Flags kept under clustering
+
+At 0.97 a sequence that is not a representative is not placed.
+It counts as caught if its representative (same cluster and taxon) is flagged by SATIVA or raxtax, because a cluster member inherits the verdict of its representative (`scripts/large/proxy.py`).
+The share of the flags of the 1.0 run found at 0.97 is therefore reported two ways: among the sequences placed in both runs, and over all flags with this inheritance.
+
+## BLAST check
+
+Flags were checked against the NCBI RefSeq 16S database (`blastn`, BLAST 2.17.0 [@blast]) with the original, ungapped sequences.
+Alignment-derived sequences are 10-30 nt shorter and gave false weak hits.
+A top hit with at least 97% identity and 90% coverage counts as strong.
+The genus of a strong hit gives a lineage through the GTDB taxonomy of the same run, and the hit is compared with the declared taxon and the proposed taxon at the flag's rank.
+Sequences with only weak hits cannot be judged.
+At species rank the check is unreliable because 16S sequences of related species are nearly identical, so species-level flags are not judged.
+
+## Divided placement tests
+
+Neither divided test is in the pipeline.
+Both ran sativa-epang by hand, all four stages in one directory, on a sample of the tree.
+
+- **Parts.** TREEDIVIDE splits the 240k tree into 472 parts of at most 2,000 tips.
+  40 parts were sampled, stratified by size with the root part excluded, holding 20,329 own tips (13 parts of 500 tips or more hold 88% of them).
+  Each part is placed with the part's own reference tree and model, 4 or 50 outgroups from the rest of the tree and 3 representatives per closed child, and flags are counted for the part's own tips only, at a placement weight of at least 0.5 (`scripts/large/dnc_prep.py`, `dnc_run.sh`, `dnc_cmp.py`, `cmp2.py`).
+- **Backbone.** One tree of 46,682 tips: for each of the genera the weightiest sequence that no whole-tree run flagged (18,367 representatives), the 14,315 candidates (every sequence with a whole-tree SATIVA flag at ranks 2-6) and 14,000 control sequences drawn at random from those without a whole-tree flag.
+  The 240k tree was pruned to these tips, with no new tree search, and sativa-epang ran on it with the model of the full tree and the same minimum weight (`scripts/large/bb_prep.py`, `bb_run.sh`, `bb_cmp.py`).
+
+The benchmark in both tests is the set of SATIVA flags of the `bac-ssu-r232-1` run on the same sequences.
+
+## Scripts and data
+
+The scripts are in `scripts/large/` and read the run directories on the server by absolute path, so they document the analysis and do not run elsewhere.
+The tables in `data/large_*.tsv` hold their output, with the script in the last column.
+`scripts/large/` also has the BLAST helpers (`sr_prep.py`, `srblast.sh`, `sr_sum.py`, `q.py`, `orig.py`, `miss*.py`, `r2*.py`, `sumblast*.py`) and the clustering sweep (`sweep.sh`).
+
+# Results
+
+## Size and cost
+
+```{r tbl-funnel}
+#| label: tbl-funnel
+#| tbl-cap: Size and cost of the bacterial run at two cluster identities. One placement fold ran in 3 jobs at a time at 0.97 and one after the other at 1.0.
+
+read_tsv("data/large_funnel.tsv", show_col_types = FALSE) %>%
+  select(-source) %>%
+  rename(Metric = metric, Unit = unit, `1.0` = `id_1.0`, `0.97` = `id_0.97`) %>%
+  kable(format.args = list(big.mark = ","))
+```
+
+Clustering at 0.97 removes 53% of the representatives and 61% of the placed sequences, since profile cover removes a larger share of what is left (@tbl-funnel).
+Memory of one placement fold falls to 0.33 of its value for 0.39 of the sequences, and time to 0.11.
+Memory per fold grows roughly as the number of tips to the power 1.17, but that rests on two points.
+At 1.0 the folds ran one after the other in about 17.5 hours; at 0.97 three ran at a time with 300 GB each and the whole pipeline took 2 h 17 min.
+The scoring step (`loo-score`) needs 35.9 GB at 92,406 sequences and 2.5 GB at 239,806, which is unexplained.
+
+```{r tbl-sweep}
+#| label: tbl-sweep
+#| tbl-cap: Representatives (one per cluster and taxon) at several cluster identities, on the input of the 1.0 run after weighting.
+
+read_tsv("data/large_sweep.tsv", show_col_types = FALSE) %>%
+  select(`Cluster identity` = cluster_identity, Representatives = representatives) %>%
+  kable(format.args = list(big.mark = ","))
+```
+
+Most of the reduction happens between 1.0 and 0.97, and 0.97 to 0.9 removes 6% of the representatives (@tbl-sweep).
+The floor is the number of distinct taxa in the input, 96,125, because every taxon keeps a representative.
+A value below 0.97 therefore saves little and loses more flags.
+The 0.99 point, 164,357 representatives, is being run.
+
+## What clustering does to the flags
+
+```{r tbl-clustering}
+#| label: tbl-clustering
+#| tbl-cap: Flags of the 1.0 run found at 0.97. The first two columns count the 89,538 sequences placed in both runs; the last two count all flags, with a cluster member inheriting the verdict of its representative.
+
+read_tsv("data/large_clustering_recall.tsv", show_col_types = FALSE) %>%
+  transmute(
+    Rank = rank,
+    `Flags at 1.0 (placed in both)` = `flags_1.0`,
+    `Also flagged at 0.97 (%)` = pct_flagged_in_both_runs,
+    `Flags at 1.0 (all)` = `flags_1.0_all`,
+    `Caught at 0.97 (%)` = `pct_caught_at_0.97`
+  ) %>%
+  kable(format.args = list(big.mark = ","))
+```
+
+Flags at phylum to family level mostly stay (83-93% caught), at genus level 56% do and at species level 39% (@tbl-clustering).
+Over all ranks, 20,074 of the 40,587 flags (49%) are caught.
+Species-level flags depend on which sister species are in the tree, so they change when sequences are removed.
+
+**BLAST of the phylum-level flags.**
+Of the 3,892 phylum-level flags of the 1.0 run, 1,507 have only weak hits.
+For the flags with a strong hit:
+
+- Flags found in both runs were mostly right: the hit lay in the phylum the flag proposed for 1,063 of 1,161.
+- Flags found only at 1.0 were mostly wrong: for the 404 whose representative was not flagged at 0.97, the hit lay in the declared phylum for 386.
+  277 of those representatives were also flagged in the 1.0 run, so the placement depends on the tree, a pattern consistent with long-branch attraction that has not been tested.
+- 97 flags that look right had no representative flagged, about 7% of the phylum-level flags that look right.
+
+At phylum level 0.97 thus dropped many flags that look wrong and missed few that look right.
+At genus and species level the loss is larger and cannot be judged this way.
+For species with many sequences (*Escherichia coli*, *Klebsiella pneumoniae*, *Staphylococcus aureus*, *Salmonella enterica*, *Pseudomonas aeruginosa*) more than 99% of the unflagged sequences had a top hit in the expected genus.
+
+The choice of cluster identity is therefore a choice between two kinds of error.
+At 1.0 more genus and species mislabels are found, but many phylum-level flags are artefacts that remove correctly labelled sequences.
+At 0.97 more correctly labelled sequences stay, but about half of the genus- and species-level mislabels are missed.
+
+## With and without the raxtax prefilter
+
+At 0.97 with `--skip_raxtax` 99,166 sequences are placed instead of 92,406, SATIVA flags 17,812 instead of 11,590 and one placement fold needs 145.7 GB instead of 135.6 GB.
+raxtax flagged 14,564 sequences in the run with raxtax, all at genus level.
+Of these, 7,390 fail profile cover and are never placed, so SATIVA could not have flagged them.
+The other 7,174 are placed when raxtax is skipped, and SATIVA flags 5,329 (74%) of them.
+
+The two runs also differ on the other sequences.
+Of the 91,992 sequences placed in both, 8,861 flags are shared, 2,575 are found only with raxtax and 3,622 only without it.
+
+```{r tbl-raxtax}
+#| label: tbl-raxtax
+#| tbl-cap: BLAST top hit of flags by where it lies, for flags found only without raxtax, for a random 1,500 of the flags found in both runs, and for raxtax flags that SATIVA does not confirm. Declared and proposed refer to the taxon at the flag's rank. Species rank (1,960 flags only without raxtax) is not judged.
+
+read_tsv("data/large_raxtax_blast.tsv", show_col_types = FALSE) %>%
+  filter(rank != 7) %>%
+  mutate(set = recode(
+    set,
+    new_without_rax = "only without raxtax",
+    both_sample = "in both runs (random 1,500)",
+    rax_notflagged = "raxtax flag, no SATIVA flag"
+  )) %>%
+  select(Set = set, Rank = rank, Declared = declared, Proposed = predicted, Both = both, Other = other,
+         `Genus unknown` = genus_unknown, `Weak or no hit` = weak_hit, Total = total) %>%
+  kable()
+```
+
+Among the flags found only without raxtax, a strong hit mostly lies in the declared taxon at ranks 2-5 (@tbl-raxtax).
+For the flags found in both runs it is the opposite: at phylum level 361 of 432 strong hits are in the proposed phylum and 41 in the declared one.
+Leaving sequences with a clearly wrong label in the tree therefore creates flags on other sequences that are mostly wrong.
+
+The flags raxtax makes and SATIVA does not confirm are not all right either.
+Of 1,845 such sequences 1,348 have only weak hits; of the 468 with a strong hit the hit lies in the declared genus for 376 and in the genus raxtax proposed for 37.
+The prefilter should therefore stay on.
+Not checked against NCBI: the 2,575 flags found only with raxtax and the 5,329 raxtax flags that SATIVA confirms.
+
+## Divided leave-one-out
+
+Placing each part of the tree separately cuts the memory, but a part cannot propose a taxon that is not in it.
+A part ran in 10 seconds to 4 minutes.
+
+```{r tbl-divided}
+#| label: tbl-divided
+#| tbl-cap: Whole-tree flags of the 1.0 run on the 20,329 tips of 40 sampled parts, and how many were flagged again by the part-wise placement with 4 and 50 outgroups. Part-wise flags that the whole tree did not make are in the last two columns.
+
+read_tsv("data/large_divided.tsv", show_col_types = FALSE) %>%
+  transmute(
+    Rank = rank,
+    `Whole-tree flags` = whole_tree_flags,
+    `Flagged again, 4 outgroups` = recalled_4_outgroups,
+    `%, 4` = round(100 * recalled_4_outgroups / whole_tree_flags),
+    `Flagged again, 50 outgroups` = recalled_50_outgroups,
+    `%, 50` = round(100 * recalled_50_outgroups / whole_tree_flags),
+    `Only part-wise, 4` = partwise_only_4,
+    `Only part-wise, 50` = partwise_only_50
+  ) %>%
+  kable(format.args = list(big.mark = ","))
+```
+
+On these tips 3,493 sequences (17%) have a whole-tree flag, and the part-wise placement flags 1,140 (4 outgroups) or 1,171 (50 outgroups), of which 831 or 848 are also whole-tree flags (@tbl-divided).
+Fifty outgroups barely help.
+The cause is that for 294 of the 374 genus-level whole-tree flags (79%) the genus the sequence is moved to is not in its part at all; where it is, the part flags 27 of 80.
+At species level the proposed species is in the part for 2,290 of 2,453 flags, yet only 523 are reproduced, so species flags depend on the wider tree.
+The flags only the part-wise placement makes are 95% species-level; their median placement weight is 0.78-0.85 and they have not been checked by BLAST.
+Of the 156 phylum-level flags with a strong hit that the part-wise placement (4 outgroups) flags, 63 look right and 93 wrong; it drops 47 right and 209 wrong ones.
+
+## Backbone
+
+A second stage that places only the sequences flagged inside their part against a backbone could supply the destination outside the part.
+The test above puts every candidate (all whole-tree flags at ranks 2-6) on one tree of 46,682 tips with a backbone of genus representatives.
+
+```{r tbl-backbone}
+#| label: tbl-backbone
+#| tbl-cap: Whole-tree flags at ranks 2-6 (candidates) and how many were flagged again in the backbone tree, at any rank, at the same rank, and with the same proposed taxon at that rank.
+
+read_tsv("data/large_backbone.tsv", show_col_types = FALSE) %>%
+  transmute(
+    Rank = rank,
+    `Whole-tree flags` = whole_tree_flags,
+    `Flagged again` = flagged_again,
+    `%` = round(100 * flagged_again / whole_tree_flags),
+    `Same rank` = same_rank,
+    `Same proposed taxon` = same_predicted_taxon
+  ) %>%
+  kable(format.args = list(big.mark = ","))
+```
+
+The backbone finds 71-86% of the flags at ranks 2-5 and 35% at genus level (@tbl-backbone); with the same proposed taxon it is 50-71% at ranks 2-5 and 24% at genus level.
+It also makes flags the whole tree did not: 659 of the 14,000 control sequences (4.7%; 72 at phylum level, 244 at genus and 327 at species level) and 654 of the 18,367 backbone representatives (3.6%).
+Memory is about 55 GB per fold.
+Placement took 3 h 9 min for 25 folds with 4 folds at 8 threads at a time, while the server was shared, so the time is not comparable with the other runs.
+
+```{r fig-methods}
+#| label: fig-methods
+#| fig-cap: "Share of the 1.0 whole-tree flags found again by each way of reducing the tree, by mismatch rank. Clustering at 0.97 counts flags caught directly or through the representative of the cluster. Divided placement is on 40 sampled parts and the backbone on one tree of 46,682 tips; both ran under the model of the reference tree and the clustering run did not (see below)."
+#| fig-height: 4
+
+cl <- read_tsv("data/large_clustering_recall.tsv", show_col_types = FALSE) %>%
+  transmute(rank, method = "clustering 0.97", pct = `pct_caught_at_0.97`)
+dv <- read_tsv("data/large_divided.tsv", show_col_types = FALSE) %>%
+  pivot_longer(c(recalled_4_outgroups, recalled_50_outgroups), names_to = "method", values_to = "n") %>%
+  transmute(rank, method = recode(method, recalled_4_outgroups = "parts, 4 outgroups", recalled_50_outgroups = "parts, 50 outgroups"),
+            pct = 100 * n / whole_tree_flags)
+bb <- read_tsv("data/large_backbone.tsv", show_col_types = FALSE) %>%
+  transmute(rank, method = "backbone", pct = 100 * flagged_again / whole_tree_flags)
+
+bind_rows(cl, dv, bb) %>%
+  filter(rank <= 6) %>%
+  ggplot(aes(factor(rank), pct, fill = method)) +
+  geom_col(position = "dodge") +
+  labs(x = "Mismatch rank (2 phylum ... 6 genus)", y = "Whole-tree flags found again (%)", fill = NULL)
+```
+
+No design recovers the genus-level flags (@fig-methods).
+Clustering at 0.97 finds more than both divided designs at every rank (83-93% against 30-86% at ranks 2-5, and 56% against 35% or less at genus level), and its cost is the lowest of the three.
+
+## The model of sativa-epang
+
+Until nf-core/taxmarker#67, `SATIVAEPANG_LOOTASKS` and `SATIVAEPANG_LOOSCORE` did not receive the reference tree's model file, so sativa-epang placed under a plain `GTR+G` while the tree had been searched under `GTR+FO+G4m`.
+All runs above except the last one, and so the whole-tree flags used as benchmark, were placed that way.
+The two manual tests ran every stage in one directory and so used the right model, which confounds their comparison with the whole-tree flags.
+The 0.97 run was repeated under the correct model.
+
+```{r tbl-fixedmodel}
+#| label: tbl-fixedmodel
+#| tbl-cap: SATIVA flags of the 0.97 run before and after the model fix, by mismatch rank. The same 92,406 sequences were placed and the same 14,564 raxtax flags were made.
+
+fm <- read_tsv("data/large_fixedmodel.tsv", show_col_types = FALSE)
+fm %>%
+  transmute(
+    Rank = rank,
+    `Before` = flags_old_model,
+    `After` = flags_fixed_model,
+    `In both` = both,
+    `Same proposed taxon` = same_predicted_taxon,
+    `Only before` = only_old,
+    `Only after` = only_new
+  ) %>%
+  kable(format.args = list(big.mark = ","))
+```
+
+SATIVA flags go from 11,590 to 11,757 (+1.4%), with 9,586 in both, 2,004 only before and 2,171 only after (@tbl-fixedmodel).
+At every rank 10-37% of the flags before are not found after, and a similar share is new.
+The flags found in both runs have a median placement weight of 1.0, the flags found in only one run 0.51, and 1,157 of the 2,004 flags only before and 1,254 of the 2,171 only after have a weight below 0.6.
+So the high-confidence flags are stable and those near the threshold move.
+Memory and time are unchanged: one fold needs 135.6 GB and 4.5 minutes, scoring 35.9 GB and 10 min 47 s.
+The placement tree is identical to that of the earlier run (same md5), so the seed reproduces the divided tree search.
+The reference tree of the export differs because it is built after the flagged sequences are removed.
+
+The confound of the divided tests is therefore about as large as this churn, in the order of 10 percentage points at phylum level, which does not change the conclusion.
+
+# Discussion
+
+**Clustering to 0.97 is a trade-off, not a free saving.**
+It makes one placement fold about 9 times shorter and 3 times lighter in memory at the price of about half of the genus and species flags (@tbl-clustering).
+Which loss matters depends on the use: at phylum level the flags it drops mostly look wrong, at genus and species level they cannot be judged.
+Going below 0.97 saves little (@tbl-sweep).
+
+**raxtax should stay on.**
+The prefilter removes sequences that would otherwise create flags on their neighbours, and the flags it makes alone are mostly wrong where BLAST can say (@tbl-raxtax).
+
+**Dividing the tree does not pay.**
+The main reason is that a sequence's correct taxon is often not in its part, and that species flags depend on the wider tree (@tbl-divided).
+A backbone stage recovers phylum to family flags but not genus flags, and it makes 4.7% false flags on control sequences (@tbl-backbone).
+Each design would add considerable complexity to the pipeline for a gain in memory only, which clustering already provides.
+The designs were not built into the pipeline.
+
+**The model fix is small for the flags and free in cost.**
+Flags near the threshold move, the confident ones stay, and nothing else changes (@tbl-fixedmodel).
+Earlier numbers, here and in the usage documentation, are measured again before a release.
+
+**Limits.**
+Each result is one run on one data set with one seed.
+The BLAST check cannot judge flags with weak hits (about half of those tried) or species-level flags.
+The divided tests sample 40 of 472 parts.
+Long-branch attraction is a hypothesis for the artefactual phylum-level flags and has not been tested.
+The scoring step's memory (35.9 GB against 2.5 GB at a larger size), the differences between the alignment-derived and the original sequences, and what profile cover removes are not explained.
+
+**Open.**
+The `--cluster_identity 0.99` run with the correct model is under way and will give a third point for memory and flags.
+
+# References
+
+```{r}
+# vim: sw=2
+```

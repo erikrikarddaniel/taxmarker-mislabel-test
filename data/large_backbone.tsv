@@ -1,0 +1,6 @@
+rank	whole_tree_flags	flagged_again	same_rank	same_predicted_taxon	source
+2	3892	2898	2716	2389	bb_cmp.py
+3	422	362	306	299	bb_cmp.py
+4	769	605	508	467	bb_cmp.py
+5	815	579	489	411	bb_cmp.py
+6	8417	2940	2733	1984	bb_cmp.py

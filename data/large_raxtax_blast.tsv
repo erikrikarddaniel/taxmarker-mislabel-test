@@ -1,0 +1,13 @@
+set	rank	declared	predicted	both	other	genus_unknown	weak_hit	no_hit	total	source
+rax_notflagged	6	376	37	19	35	29	1348	1	1845	sr_sum.py
+new_without_rax	2	161	51	3	11	4	220	0	450	sr_sum.py
+new_without_rax	3	18	0	0	0	1	32	1	52	sr_sum.py
+new_without_rax	4	31	4	1	8	3	91	0	138	sr_sum.py
+new_without_rax	5	27	1	1	3	1	166	0	199	sr_sum.py
+new_without_rax	6	102	46	33	53	13	576	0	823	sr_sum.py
+new_without_rax	7	235	173	48	945	0	559	0	1960	sr_sum.py
+both_sample	2	41	361	5	25	17	331	7	787	sr_sum.py
+both_sample	3	1	36	0	1	2	66	0	106	sr_sum.py
+both_sample	4	5	47	1	27	1	100	1	182	sr_sum.py
+both_sample	5	8	28	3	9	0	104	0	152	sr_sum.py
+both_sample	6	24	39	17	34	8	151	0	273	sr_sum.py
