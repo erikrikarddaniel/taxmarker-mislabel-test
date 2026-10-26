@@ -35,7 +35,7 @@ library(tidyr)
 # Version history
 
 - 2026-10-25: first draft, written from the analysis sessions of 2026-10-23 to 2026-10-25.
-  The `--cluster_identity 0.99` run is not included yet.
+- 2026-10-26: added the `--cluster_identity 0.99` run (under the correct model) and a per-representative measure of the flags kept, because the member-weighted genus-level share is dominated by a few large clusters.
 
 # Summary
 
@@ -45,6 +45,7 @@ We asked how much of that cost can be removed, and what is lost.
 - **Clustering at 0.97** cuts the placed sequences to 92,406, one fold to 135.6 GB and 4.5 minutes, and the whole pipeline to 2 h 17 min (@tbl-funnel).
   It finds 83-93% of the flags at phylum to family level, 56% at genus level and 39% at species level (@tbl-clustering).
   Below 0.97 the tree barely shrinks, because every taxon keeps at least one representative (@tbl-sweep).
+- **Clustering at 0.99** places 103,225 sequences, needs 152.5 GB and 5.6 minutes per fold, and finds more species-level flags than 0.97 (43% of the representatives of the 1.0 flags against 30%) and the same share at the other ranks (@tbl-099).
 - **The raxtax prefilter** should stay on.
   Without it SATIVA flags 6,222 more sequences, and among the flags that BLAST can judge most of the extra ones point at the declared taxon (@tbl-raxtax).
 - **Dividing the tree for placement** does not recover what clustering loses.
@@ -68,11 +69,11 @@ The small injected test sets of `taxmarker-mislabel-tests.qmd` are a different q
 ## Input and runs
 
 All runs used the 1,118,534 bacterial sequences in GTDB's `ssu_all_r232.fna.gz` [@gtdb], with `--upstream GTDB` weights and the same tree search settings and seed.
-The runs differ in `--cluster_identity` (1.0 and 0.97) and in whether raxtax was on (`--skip_raxtax`).
+The runs differ in `--cluster_identity` (1.0, 0.99 and 0.97) and in whether raxtax was on (`--skip_raxtax`).
 The reference tree was searched by the divided tree search of nf-core/taxmarker#66 and the placement ran in 25 folds, one per job.
 Runs were done on a shared server with 128 cores.
-A run is named by its output directory below: `bac-ssu-r232-1` (identity 1.0), `bac-ssu-r232-1-0.97`, `bac-ssu-r232-1-0.97-skip_raxtax` and `bac-ssu-r232-1-0.97-fixedmodel`.
-The code of the first runs is tagged `run/taxmarker-bacteria-2026-10` in the fork and that of the last run `run/taxmarker-bacteria-fixedmodel-2026-10`, which adds the change of nf-core/taxmarker#67.
+A run is named by its output directory below: `bac-ssu-r232-1` (identity 1.0), `bac-ssu-r232-1-0.97`, `bac-ssu-r232-1-0.97-skip_raxtax`, `bac-ssu-r232-1-0.97-fixedmodel` and `bac-ssu-r232-1-0.99-fixedmodel`.
+The code of the first runs is tagged `run/taxmarker-bacteria-2026-10` in the fork and that of the two last runs `run/taxmarker-bacteria-fixedmodel-2026-10`, which adds the change of nf-core/taxmarker#67.
 
 A flag has a mismatch rank, the highest rank at which the declared and the proposed lineage differ: 2 phylum, 3 class, 4 order, 5 family, 6 genus, 7 species.
 SATIVA flags and raxtax flags are counted separately; raxtax flags are all at genus level.
@@ -81,7 +82,9 @@ SATIVA flags and raxtax flags are counted separately; raxtax flags are all at ge
 
 At 0.97 a sequence that is not a representative is not placed.
 It counts as caught if its representative (same cluster and taxon) is flagged by SATIVA or raxtax, because a cluster member inherits the verdict of its representative (`scripts/large/proxy.py`).
-The share of the flags of the 1.0 run found at 0.97 is therefore reported two ways: among the sequences placed in both runs, and over all flags with this inheritance.
+The share of the flags of the 1.0 run found at 0.97 is therefore reported three ways: among the sequences placed in both runs, over all flags with this inheritance, and as the share of distinct representatives that are flagged (`scripts/large/reps.py`).
+The second counts member sequences, so a few large clusters weigh heavily: at genus level the ten largest representatives carry 5,958 of the 8,417 flags of the 1.0 run and one carries 2,140.
+The third counts each (cluster, taxon) pair once and is the more stable measure.
 
 ## BLAST check
 
@@ -117,19 +120,19 @@ The tables in `data/large_*.tsv` hold their output, with the script in the last 
 
 ```{r tbl-funnel}
 #| label: tbl-funnel
-#| tbl-cap: Size and cost of the bacterial run at two cluster identities. One placement fold ran in 3 jobs at a time at 0.97 and one after the other at 1.0.
+#| tbl-cap: Size and cost of the bacterial run at three cluster identities. One placement fold ran in 3 jobs at a time at 0.97 and 0.99 and one after the other at 1.0. The 1.0 and 0.97 columns were placed under the wrong model (see below, the 0.97 run has 11,757 SATIVA flags under the right one, with the same memory and time); the 0.99 column used the right model.
 
 read_tsv("data/large_funnel.tsv", show_col_types = FALSE) %>%
-  select(-source) %>%
-  rename(Metric = metric, Unit = unit, `1.0` = `id_1.0`, `0.97` = `id_0.97`) %>%
+  select(Metric = metric, Unit = unit, `1.0` = `id_1.0`, `0.99` = `id_0.99`, `0.97` = `id_0.97`) %>%
   kable(format.args = list(big.mark = ","))
 ```
 
 Clustering at 0.97 removes 53% of the representatives and 61% of the placed sequences, since profile cover removes a larger share of what is left (@tbl-funnel).
 Memory of one placement fold falls to 0.33 of its value for 0.39 of the sequences, and time to 0.11.
-Memory per fold grows roughly as the number of tips to the power 1.17, but that rests on two points.
+Memory per fold grows roughly as the number of tips to the power 1.06 from 0.97 to 0.99 and 1.17 from 0.97 to 1.0.
+Time per fold grows faster than memory: 4.5 minutes at 92,406 sequences, 5.6 at 103,225 and 42 at 239,806; the 1.0 folds ran alone and at a different memory pressure, so that last step is not comparable.
 At 1.0 the folds ran one after the other in about 17.5 hours; at 0.97 three ran at a time with 300 GB each and the whole pipeline took 2 h 17 min.
-The scoring step (`loo-score`) needs 35.9 GB at 92,406 sequences and 2.5 GB at 239,806, which is unexplained.
+The scoring step (`loo-score`) needs 35.9 GB at 92,406 sequences, 1.1 GB at 103,225 and 2.5 GB at 239,806, which is unexplained and not a function of the number of sequences.
 
 ```{r tbl-sweep}
 #| label: tbl-sweep
@@ -143,7 +146,7 @@ read_tsv("data/large_sweep.tsv", show_col_types = FALSE) %>%
 Most of the reduction happens between 1.0 and 0.97, and 0.97 to 0.9 removes 6% of the representatives (@tbl-sweep).
 The floor is the number of distinct taxa in the input, 96,125, because every taxon keeps a representative.
 A value below 0.97 therefore saves little and loses more flags.
-The 0.99 point, 164,357 representatives, is being run.
+The 0.99 point, 164,357 representatives, was run; it gives 103,225 placed sequences against 92,406 at 0.97.
 
 ## What clustering does to the flags
 
@@ -162,7 +165,7 @@ read_tsv("data/large_clustering_recall.tsv", show_col_types = FALSE) %>%
   kable(format.args = list(big.mark = ","))
 ```
 
-Flags at phylum to family level mostly stay (83-93% caught), at genus level 56% do and at species level 39% (@tbl-clustering).
+Flags at phylum to family level mostly stay (83-93% caught), at genus level 56% do and at species level 39% (@tbl-clustering); counted by distinct representatives the genus-level share is 66% and the species-level share 30% (@tbl-099).
 Over all ranks, 20,074 of the 40,587 flags (49%) are caught.
 Species-level flags depend on which sister species are in the tree, so they change when sequences are removed.
 
@@ -182,6 +185,35 @@ For species with many sequences (*Escherichia coli*, *Klebsiella pneumoniae*, *S
 The choice of cluster identity is therefore a choice between two kinds of error.
 At 1.0 more genus and species mislabels are found, but many phylum-level flags are artefacts that remove correctly labelled sequences.
 At 0.97 more correctly labelled sequences stay, but about half of the genus- and species-level mislabels are missed.
+
+## Identity 0.99
+
+```{r tbl-099}
+#| label: tbl-099
+#| tbl-cap: SATIVA flags by mismatch rank in the 0.97 and 0.99 runs under the correct model, and the share of the 1.0 run's flags kept. Members = share of the flagged sequences of the 1.0 run caught directly or through the representative of their cluster; representatives = share of the distinct representatives of those sequences that are flagged (SATIVA or raxtax).
+
+runs <- read_tsv("data/large_clustering_runs.tsv", show_col_types = FALSE)
+runs %>%
+  filter(run != "0.97") %>%
+  transmute(
+    Rank = rank,
+    Run = sub(" fixed model", "", run),
+    `1.0 flags` = `whole_tree_flags_1.0`,
+    `Flags in run` = sativa_flags_in_run,
+    `Members (%)` = members_caught_pct,
+    `Representatives` = distinct_reps,
+    `Representatives (%)` = reps_flagged_pct
+  ) %>%
+  arrange(Rank, desc(Run)) %>%
+  kable(format.args = list(big.mark = ","))
+```
+
+At 0.99 the run has 15,722 SATIVA flags against 11,757 at 0.97, with 8,575 shared, and the extra flags are mostly at species level (6,854 against 3,713) (@tbl-099).
+Memory and time per fold rise by 12% and 24% (152.5 GB, 5.6 minutes).
+The share of representatives flagged is the same at ranks 2-6 (91-92% at phylum, 65-67% at genus level) and higher at species level (43% against 30%).
+The flags found only in one of the two runs have a median placement weight of 1.0 for 0.99 and 0.61 for 0.97, so the extra flags at 0.99 are not weak ones.
+The member-weighted shares are less stable than the representative shares: at genus level they are 56%, 73% and 56% for 0.97 (wrong model), 0.97 and 0.99, although the representative shares are 66%, 67% and 65%.
+The difference comes from a handful of large clusters whose representative is or is not flagged, so a member-weighted genus-level share should not be read to a few percentage points.
 
 ## With and without the raxtax prefilter
 
@@ -340,6 +372,7 @@ The confound of the divided tests is therefore about as large as this churn, in 
 It makes one placement fold about 9 times shorter and 3 times lighter in memory at the price of about half of the genus and species flags (@tbl-clustering).
 Which loss matters depends on the use: at phylum level the flags it drops mostly look wrong, at genus and species level they cannot be judged.
 Going below 0.97 saves little (@tbl-sweep).
+Going from 0.97 to 0.99 costs 12% more memory and 24% more time per fold and gives more species-level flags (43% of the representatives against 30%), so 0.99 is a middle choice if species-level flags matter and 1.0 is too expensive (@tbl-099).
 
 **raxtax should stay on.**
 The prefilter removes sequences that would otherwise create flags on their neighbours, and the flags it makes alone are mostly wrong where BLAST can say (@tbl-raxtax).
@@ -359,10 +392,10 @@ Each result is one run on one data set with one seed.
 The BLAST check cannot judge flags with weak hits (about half of those tried) or species-level flags.
 The divided tests sample 40 of 472 parts.
 Long-branch attraction is a hypothesis for the artefactual phylum-level flags and has not been tested.
-The scoring step's memory (35.9 GB against 2.5 GB at a larger size), the differences between the alignment-derived and the original sequences, and what profile cover removes are not explained.
+The scoring step's memory (35.9 GB at 92,406 sequences, 1.1 GB at 103,225 and 2.5 GB at 239,806), the differences between the alignment-derived and the original sequences, and what profile cover removes are not explained.
 
 **Open.**
-The `--cluster_identity 0.99` run with the correct model is under way and will give a third point for memory and flags.
+The 1.0 run was placed under the wrong model and is the benchmark for all comparisons; a rerun at 1.0 under the correct model (about 9 hours with two folds at a time) would settle how much of the genus- and species-level differences are the model.
 
 # References
 

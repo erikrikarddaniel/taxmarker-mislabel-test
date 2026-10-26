@@ -1,10 +1,10 @@
-metric	unit	id_1.0	id_0.97	source
-input sequences	n	1118534	1118534	pipeline outputs
-representatives after clustering	n	318358	148034	pipeline outputs
-after raxtax prefilter	n	299245	133470	pipeline outputs
-placed and scored (after profile cover)	n	239806	92406	pipeline outputs
-SATIVA flags	n	40587	11590	mislabels/user-alignment.mislabels.tsv
-peak memory of one placement fold	GB	414.5	135.6	execution_trace
-time of one placement fold	min	42	4.5	execution_trace
-peak memory of loo-score	GB	2.5	35.9	execution_trace
-time of loo-score	min	66	10.8	execution_trace
+metric	unit	id_1.0	id_0.97	id_0.99	source
+input sequences	n	1118534	1118534	1118534	pipeline outputs
+representatives after clustering	n	318358	148034	164357	pipeline outputs
+after raxtax prefilter	n	299245	133470	149308	pipeline outputs
+placed and scored (after profile cover)	n	239806	92406	103225	pipeline outputs
+SATIVA flags	n	40587	11590	15722	mislabels/user-alignment.mislabels.tsv
+peak memory of one placement fold	GB	414.5	135.6	152.5	execution_trace
+time of one placement fold	min	42	4.5	5.6	execution_trace
+peak memory of loo-score	GB	2.5	35.9	1.1	execution_trace
+time of loo-score	min	66	10.8	13.2	execution_trace

@@ -1,6 +1,7 @@
 import csv, collections, sys
 base = "/data/users/dl/projects/sbdi-gtdb/taxmarker/"
-A, B = base + "bac-ssu-r232-1/", base + "bac-ssu-r232-1-0.97/"
+import sys
+A, B = base + "bac-ssu-r232-1/", base + sys.argv[1] + "/"
 
 def names(d):
     return {l[1:].split()[0] for l in open(d + "profilecover/user-alignment.covfiltered.fasta") if l[0] == ">"}
@@ -32,7 +33,7 @@ with open(B + "clusterselect/user-alignment.selection.tsv") as fh:
 tab = collections.defaultdict(collections.Counter)
 for s, r in flagsA.items():
     if s in scoredB:
-        cat = "scored at 0.97 (counted before)"
+        cat = "scored, flagged" if s in flagsB else "scored, not flagged"
     else:
         rp = rep[seq2key[s]]
         if rp in scoredB:
@@ -42,7 +43,7 @@ for s, r in flagsA.items():
         else:
             cat = "rep removed (profile cover/raxtax pass)"
     tab[r][cat] += 1
-cats = ["scored at 0.97 (counted before)", "rep flagged", "rep flagged by raxtax", "rep not flagged", "rep removed (profile cover/raxtax pass)"]
+cats = ["scored, flagged", "scored, not flagged", "rep flagged", "rep flagged by raxtax", "rep not flagged", "rep removed (profile cover/raxtax pass)"]
 print("A=240k SATIVA flags:", len(flagsA))
 print("rank\t" + "\t".join(cats) + "\ttotal")
 tot = collections.Counter()
@@ -50,3 +51,10 @@ for r in sorted(tab):
     print(r, *[tab[r][c] for c in cats], sum(tab[r].values()), sep="\t")
     tot.update(tab[r])
 print("all", *[tot[c] for c in cats], sum(tot.values()), sep="\t")
+
+caught = ("scored, flagged", "rep flagged", "rep flagged by raxtax")
+print("caught (flagged directly, or representative flagged by SATIVA or raxtax): rank, n, pct")
+for r in sorted(tab):
+    n = sum(tab[r].values()); c = sum(tab[r][k] for k in caught)
+    print(r, n, c, "%.0f%%" % (100 * c / n), sep="\t")
+print("all", sum(tot.values()), sum(tot[k] for k in caught), "%.0f%%" % (100 * sum(tot[k] for k in caught) / sum(tot.values())), sep="\t")
