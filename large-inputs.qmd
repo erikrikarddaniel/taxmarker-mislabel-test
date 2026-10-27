@@ -35,7 +35,7 @@ library(tidyr)
 # Version history
 
 - 2026-10-25: first draft, written from the analysis sessions of 2026-10-23 to 2026-10-25.
-- 2026-10-27: the 1.0 run was repeated under the correct model and is now the benchmark of the clustering and parts comparisons; the run time of a complete run was added (walltime and CPU time summed over tasks).
+- 2026-10-27: the 1.0 run was repeated under the correct model and is now the benchmark of the clustering and parts comparisons, and its phylum-level flags were checked with BLAST; the run time of a complete run was added (walltime and CPU time summed over tasks).
 - 2026-10-26: added the `--cluster_identity 0.99` run (under the correct model) and a per-representative measure of the flags kept, because the member-weighted genus-level share is dominated by a few large clusters.
 
 # Summary
@@ -58,7 +58,8 @@ We asked how much of that cost can be removed, and what is lost.
   Rerunning under the correct model leaves memory and time unchanged (@tbl-fixedmodel).
   At 0.97 it changes 17-18% of the flags, mostly ones with a low placement weight.
   At 1.0 it changes 34-38% (40-45% at genus and species level), and the flags that change have a median placement weight of 1.0.
-  Flags near the species level are therefore sensitive to the model, and the size of the run-to-run noise without a model change is not known.
+  Flags at genus and species level are therefore sensitive to the model.
+  Repeating one 0.97 fold changed the top placement of 1.5% of its queries, all of them ties between equally weighted edges, and ties are 3-5 times as common at 1.0, so placement noise is small but not zero.
 
 # Introduction
 
@@ -202,19 +203,34 @@ The first 1.0 run, placed under the wrong model, gave 83-93% at phylum to family
 Species-level flags depend on which sister species are in the tree, so they change when sequences are removed.
 
 **BLAST of the phylum-level flags.**
-This check was made on the first 1.0 run and the first 0.97 run, both under the wrong model.
-The 1.0 rerun has 3,903 phylum-level flags, 3,197 of them also in the first run; its 706 new ones have not been checked.
-Of the 3,892 phylum-level flags of the first 1.0 run, 1,507 have only weak hits.
+All 3,903 phylum-level flags of the 1.0 rerun were checked.
+The 3,197 that the first 1.0 run also flagged kept their result and the 706 new ones were run (`scripts/large/r2new.py`, `r2sum_new.py`).
+The categories say what happened to the flagged sequence at 0.97 (@tbl-phylumblast).
+
+```{r tbl-phylumblast}
+#| label: tbl-phylumblast
+#| tbl-cap: BLAST top hit of the 3,903 phylum-level flags of the 1.0 rerun, by what happened to the sequence at 0.97, and the phylum the hit lies in. Declared and proposed refer to the flag. Weak hits are below 97% identity or 90% coverage.
+
+read_tsv("data/large_blast_phylum.tsv", show_col_types = FALSE) %>%
+  select(Category = category, Declared = declared_phylum, Proposed = predicted_phylum, Both = both,
+         Other = third_phylum, `Genus unknown` = genus_unknown, `Weak hit` = weak_hit, `No hit` = no_hit, Total = total) %>%
+  kable(format.args = list(big.mark = ","))
+```
+
+Of the 3,903 flags, 1,502 have only weak hits.
 For the flags with a strong hit:
 
-- Flags found in both runs were mostly right: the hit lay in the phylum the flag proposed for 1,063 of 1,161.
-- Flags found only at 1.0 were mostly wrong: for the 404 whose representative was not flagged at 0.97, the hit lay in the declared phylum for 386.
-  277 of those representatives were also flagged in the 1.0 run, so the placement depends on the tree, a pattern consistent with long-branch attraction that has not been tested.
-- 97 flags that look right had no representative flagged, about 7% of the phylum-level flags that look right.
+- Flags found in both runs were mostly right: the hit lay in the phylum the flag proposed for 1,091 of 1,190 (@tbl-phylumblast).
+- Flags found only at 1.0 were mostly wrong: for the 288 whose representative was not flagged at 0.97, the hit lay in the declared phylum for 278.
+  83 of those representatives were also flagged in the 1.0 run, so the placement depends on the tree, a pattern consistent with long-branch attraction that has not been tested.
+- 84 flags that look right had no representative flagged, about 6% of the phylum-level flags that look right.
+
+The 706 flags that are new in the rerun are mostly wrong: of the 607 with a strong hit, 506 lie in the declared phylum and 97 in the proposed one.
+The rerun as a whole has the same mix as the first run (1,436 strong hits in the proposed phylum against 793 in the declared one; first run 1,418 against 794), so the model change swapped flags without changing the share that look wrong.
 
 At phylum level 0.97 thus dropped many flags that look wrong and missed few that look right.
 At genus and species level the loss is larger and cannot be judged this way.
-For species with many sequences (*Escherichia coli*, *Klebsiella pneumoniae*, *Staphylococcus aureus*, *Salmonella enterica*, *Pseudomonas aeruginosa*) more than 99% of the unflagged sequences had a top hit in the expected genus.
+For species with many sequences (*Escherichia coli*, *Klebsiella pneumoniae*, *Staphylococcus aureus*, *Salmonella enterica*, *Pseudomonas aeruginosa*) more than 99% of the sequences not flagged in the rerun had a top hit in the expected genus (99.4-100%; `scripts/large/sp_new.py`).
 
 The choice of cluster identity is therefore a choice between two kinds of error.
 At 1.0 more genus and species mislabels are found, but many phylum-level flags are artefacts that remove correctly labelled sequences.
@@ -312,11 +328,11 @@ read_tsv("data/large_divided.tsv", show_col_types = FALSE) %>%
 On these tips 3,808 sequences (19%) have a whole-tree flag in the 1.0 rerun, and the part-wise placement flags 1,140 (4 outgroups) or 1,171 (50 outgroups), of which 899 or 913 are also whole-tree flags (@tbl-divided).
 Against the first 1.0 run the shares were the same within 5 points at every rank (`data/large_divided_first_1.0.tsv`).
 Fifty outgroups barely help.
-The three analyses that follow (where the proposed genus and species lie, and the BLAST check of the phylum-level flags) were made on the flags of the first 1.0 run, so their counts differ slightly from the table.
+The two analyses of where the proposed genus and species lie were made on the flags of the first 1.0 run, so their counts differ slightly from the table.
 The cause is that for 294 of the 374 genus-level whole-tree flags (79%) the genus the sequence is moved to is not in its part at all; where it is, the part flags 27 of 80.
 At species level the proposed species is in the part for 2,290 of 2,453 flags, yet only 523 are reproduced, so species flags depend on the wider tree.
 The flags only the part-wise placement makes are 94-95% species-level; their median placement weight is 0.74-0.83 and they have not been checked by BLAST.
-Of the 156 phylum-level flags with a strong hit that the part-wise placement (4 outgroups) flags, 63 look right and 93 wrong; it drops 47 right and 209 wrong ones.
+Of the 146 phylum-level flags of the rerun with a strong hit that the part-wise placement (4 outgroups) flags, 69 look right and 77 wrong; it drops 52 right and 234 wrong ones.
 
 ## Backbone
 
@@ -414,7 +430,14 @@ The placement tree is identical in each pair (same md5), so the seed reproduces 
 The reference tree of the export differs because it is built after the flagged sequences are removed.
 
 The comparisons with the divided placement are made against the rerun, so the model confound is removed for the parts (the shares moved by at most 5 points), but not for the backbone.
-Whether a repeat run under the same model also changes this many flags is not known, so part of the churn may be noise of the placement itself.
+**Noise of the placement.**
+To see what a repeat does without a model change, fold 0 of the 0.97 run under the correct model (3,697 queries) was placed again with the same input and container, at 8 instead of 12 threads (`scripts/large/noise.sh`, `jp.py`).
+The file differs, but only slightly: the tree is the same, all 3,697 queries have the same top placement weight, and 3,641 (98.5%) have the same top edge.
+All 56 queries with another top edge are ties between edges of equal weight, and 4 queries (0.1%) have another set of edges.
+Ties are 2.5% of the queries of this fold, and 7.6% and 11.9% in the two folds of the 1.0 rerun that were counted (`scripts/large/ties.py`).
+If ties are resolved differently as often at 1.0 as here (56 of 91), 5-7% of the queries of a 1.0 fold could change their top edge.
+This is far below the 34-38% of the flags that differ between the models, but it is not negligible, and it is one fold at one cluster identity with a changed thread count.
+A repeat of one 1.0 fold under the same model and thread count would settle it (48 minutes and 415 GB).
 
 # Discussion
 
@@ -435,19 +458,20 @@ The designs were not built into the pipeline.
 
 **The model matters most for species-level flags at 1.0.**
 Under the correct model the 1.0 run flags 6% more sequences, but only 62% of its flags are in the first run (@tbl-fixedmodel).
-Species-level flags among near-identical sequences are the least reproducible, and a user should not expect the same flags from a different model or possibly from a repeat run.
+Species-level flags among near-identical sequences are the least reproducible, and a user should not expect the same flags from a different model, and placements that tie on weight can change between repeats.
 The conclusions on clustering and on the divided parts hold against both versions of the benchmark.
 
 **Limits.**
 Each result is one run on one data set with one seed.
-The BLAST check was made on the flags of the first runs, cannot judge flags with weak hits (about half of those tried) and does not judge species-level flags.
+The BLAST check cannot judge flags with weak hits (about half of those tried) and does not judge species-level flags; the raxtax comparison and the genus- and species-level analyses of the parts were made on the first runs.
 The divided tests sample 40 of 472 parts.
 Long-branch attraction is a hypothesis for the artefactual phylum-level flags and has not been tested.
 The scoring step's memory (35.9 GB at 92,406 sequences, 1.1 GB at 103,225, 11.3 GB at 239,806), the differences between the alignment-derived and the original sequences, and what profile cover removes are not explained.
 
 **Open.**
-The run-to-run noise at a fixed model is not measured: a repeat of the 1.0 run, or of the placement of a few folds, under the same model would tell how much of the 34-38% is the model and how much the placement.
-The BLAST check of the 1.0 rerun's flags, the backbone against the rerun and the effect of the model on clustering recall at 0.99 are not done.
+The run-to-run noise was measured on one 0.97 fold only: a repeat of a 1.0 fold under the same model and thread count would show whether ties are resolved differently often enough to matter for flags.
+The link from changed top edges to changed flags was not followed through the scoring step.
+The backbone against the rerun is not done, nor are the raxtax comparison and the genus- and species-level analyses of the parts under the correct model.
 
 # References
 
