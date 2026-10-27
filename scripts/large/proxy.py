@@ -1,7 +1,7 @@
 import csv, collections, sys
 base = "/data/users/dl/projects/sbdi-gtdb/taxmarker/"
 import sys
-A, B = base + "bac-ssu-r232-1/", base + sys.argv[1] + "/"
+A, B = base + __import__("os").environ.get("BENCH", "bac-ssu-r232-1") + "/", base + sys.argv[1] + "/"
 
 def names(d):
     return {l[1:].split()[0] for l in open(d + "profilecover/user-alignment.covfiltered.fasta") if l[0] == ">"}

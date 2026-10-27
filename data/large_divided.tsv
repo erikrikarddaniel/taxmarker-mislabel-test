@@ -1,7 +1,7 @@
 rank	whole_tree_flags	recalled_4_outgroups	recalled_50_outgroups	partwise_only_4	partwise_only_50	source
-2	522	216	217	1	2	dnc_cmp.py, cmp2.py
-3	32	16	17	0	0	dnc_cmp.py, cmp2.py
-4	55	29	36	1	1	dnc_cmp.py, cmp2.py
-5	57	17	22	5	5	dnc_cmp.py, cmp2.py
-6	374	24	27	8	9	dnc_cmp.py, cmp2.py
-7	2453	529	529	294	306	dnc_cmp.py, cmp2.py
+2	538	205	214	1	2	dnc_cmp.py, cmp2.py
+3	30	16	17	0	0	dnc_cmp.py, cmp2.py
+4	50	24	31	1	0	dnc_cmp.py, cmp2.py
+5	60	18	22	4	4	dnc_cmp.py, cmp2.py
+6	344	25	27	7	9	dnc_cmp.py, cmp2.py
+7	2786	611	602	228	243	dnc_cmp.py, cmp2.py

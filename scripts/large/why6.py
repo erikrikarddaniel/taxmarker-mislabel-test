@@ -1,6 +1,6 @@
 import collections
 base = "/data/users/dl/projects/sbdi-gtdb/taxmarker/"
-A = base + "bac-ssu-r232-1/"
+A = base + __import__("os").environ.get("BENCH", "bac-ssu-r232-1") + "/"
 def flags(d):
     o = {}
     with open(d + "mislabels/user-alignment.mislabels.tsv") as fh:

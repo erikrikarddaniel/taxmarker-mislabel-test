@@ -1,19 +1,13 @@
 run	rank	whole_tree_flags_1.0	sativa_flags_in_run	members_caught_pct	distinct_reps	reps_flagged	reps_flagged_pct	source
-0.97	2	3892	3694	83	3090	2804	91	proxy.py, reps.py, cmp_runs.py
-0.97	3	422	460	93	400	370	92	proxy.py, reps.py, cmp_runs.py
-0.97	4	769	935	87	719	642	89	proxy.py, reps.py, cmp_runs.py
-0.97	5	815	882	85	757	638	84	proxy.py, reps.py, cmp_runs.py
-0.97	6	8417	1954	56	1701	1128	66	proxy.py, reps.py, cmp_runs.py
-0.97	7	26272	3665	39	7572	2253	30	proxy.py, reps.py, cmp_runs.py
-0.97 fixed model	2	3892	3729	86	3090	2839	92	proxy.py, reps.py, cmp_runs.py
-0.97 fixed model	3	422	475	92	400	369	92	proxy.py, reps.py, cmp_runs.py
-0.97 fixed model	4	769	923	86	719	633	88	proxy.py, reps.py, cmp_runs.py
-0.97 fixed model	5	815	899	83	757	637	84	proxy.py, reps.py, cmp_runs.py
-0.97 fixed model	6	8417	2018	73	1701	1145	67	proxy.py, reps.py, cmp_runs.py
-0.97 fixed model	7	26272	3713	38	7572	2291	30	proxy.py, reps.py, cmp_runs.py
-0.99 fixed model	2	3892	4012	87	3255	2970	91	proxy.py, reps.py, cmp_runs.py
-0.99 fixed model	3	422	442	91	410	374	91	proxy.py, reps.py, cmp_runs.py
-0.99 fixed model	4	769	913	89	729	643	88	proxy.py, reps.py, cmp_runs.py
-0.99 fixed model	5	815	911	80	771	629	82	proxy.py, reps.py, cmp_runs.py
-0.99 fixed model	6	8417	2590	56	2437	1584	65	proxy.py, reps.py, cmp_runs.py
-0.99 fixed model	7	26272	6854	49	9852	4261	43	proxy.py, reps.py, cmp_runs.py
+0.97 fixed model	2	3903	3729	87	3097	2850	92	proxy.py, reps.py, cmp_runs.py
+0.97 fixed model	3	420	475	91	403	365	91	proxy.py, reps.py, cmp_runs.py
+0.97 fixed model	4	741	923	91	708	643	91	proxy.py, reps.py, cmp_runs.py
+0.97 fixed model	5	812	899	84	768	650	85	proxy.py, reps.py, cmp_runs.py
+0.97 fixed model	6	8713	2018	72	1830	1208	66	proxy.py, reps.py, cmp_runs.py
+0.97 fixed model	7	28538	3713	37	8220	2401	29	proxy.py, reps.py, cmp_runs.py
+0.99 fixed model	2	3903	4012	88	3259	3001	92	proxy.py, reps.py, cmp_runs.py
+0.99 fixed model	3	420	442	91	411	376	91	proxy.py, reps.py, cmp_runs.py
+0.99 fixed model	4	741	913	90	720	648	90	proxy.py, reps.py, cmp_runs.py
+0.99 fixed model	5	812	911	82	786	644	82	proxy.py, reps.py, cmp_runs.py
+0.99 fixed model	6	8713	2590	56	2613	1682	64	proxy.py, reps.py, cmp_runs.py
+0.99 fixed model	7	28538	6854	48	10656	4485	42	proxy.py, reps.py, cmp_runs.py

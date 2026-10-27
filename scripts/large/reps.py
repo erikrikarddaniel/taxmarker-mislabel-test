@@ -8,7 +8,7 @@ def flags(d, m):
             f = l.rstrip("\n").split("\t")
             if f[5] == m: o[f[0]] = int(f[4])
     return o
-fA = flags(base + "bac-ssu-r232-1/", "sativa")
+fA = flags(base + __import__("os").environ.get("BENCH", "bac-ssu-r232-1") + "/", "sativa")
 for k in ("0.97", "0.97-fixedmodel", "0.99-fixedmodel"):
     B = base + "bac-ssu-r232-1-" + k + "/"
     fs, fr = flags(B, "sativa"), flags(B, "raxtax")

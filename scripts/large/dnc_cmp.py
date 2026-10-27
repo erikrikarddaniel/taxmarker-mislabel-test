@@ -1,6 +1,6 @@
 import os, collections
 O = os.path.expanduser("~/projects/taxmarker/dnc/")
-base = "/data/users/dl/projects/sbdi-gtdb/taxmarker/bac-ssu-r232-1/"
+base = "/data/users/dl/projects/sbdi-gtdb/taxmarker/" + __import__("os").environ.get("BENCH", "bac-ssu-r232-1") + "/"
 whole = {}
 with open(base + "mislabels/user-alignment.mislabels.tsv") as fh:
     next(fh)

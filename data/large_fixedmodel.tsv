@@ -1,7 +1,13 @@
-rank	flags_old_model	flags_fixed_model	both	same_predicted_taxon	only_old	only_new	source
-2	3694	3729	3325	2177	369	404	fm_cmp.py
-3	460	475	406	280	54	69	fm_cmp.py
-4	935	923	776	521	159	147	fm_cmp.py
-5	882	899	739	568	143	160	fm_cmp.py
-6	1954	2018	1424	967	530	594	fm_cmp.py
-7	3665	3713	2293	1748	1372	1420	fm_cmp.py
+identity	rank	flags_old_model	flags_fixed_model	both	same_predicted_taxon	only_old	only_new	source
+0.97	2	3694	3729	3325	2177	369	404	fm_cmp.py
+0.97	3	460	475	406	280	54	69	fm_cmp.py
+0.97	4	935	923	776	521	159	147	fm_cmp.py
+0.97	5	882	899	739	568	143	160	fm_cmp.py
+0.97	6	1954	2018	1424	967	530	594	fm_cmp.py
+0.97	7	3665	3713	2293	1748	1372	1420	fm_cmp.py
+1.0	2	3892	3903	3197	2244	695	706	cmp_runs.py
+1.0	3	422	420	370	267	52	50	cmp_runs.py
+1.0	4	769	741	631	447	138	110	cmp_runs.py
+1.0	5	815	812	650	510	165	162	cmp_runs.py
+1.0	6	8417	8713	5004	3301	3413	3709	cmp_runs.py
+1.0	7	26272	28538	15753	8755	10519	12785	cmp_runs.py

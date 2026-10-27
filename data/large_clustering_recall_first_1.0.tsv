@@ -1,0 +1,7 @@
+rank	flags_1.0	pct_flagged_in_both_runs	flags_1.0_all	pct_caught_at_0.97	source
+2	2714	93	3892	83	proxy.py
+3	361	93	422	93	proxy.py
+4	665	89	769	87	proxy.py
+5	704	85	815	85	proxy.py
+6	1544	66	8417	56	proxy.py
+7	4674	35	26272	39	proxy.py
