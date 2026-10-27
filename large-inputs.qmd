@@ -35,6 +35,7 @@ library(tidyr)
 # Version history
 
 - 2026-10-25: first draft, written from the analysis sessions of 2026-10-23 to 2026-10-25.
+- 2026-10-27: added the run time of a complete run at each cluster identity (walltime and CPU time summed over tasks).
 - 2026-10-26: added the `--cluster_identity 0.99` run (under the correct model) and a per-representative measure of the flags kept, because the member-weighted genus-level share is dominated by a few large clusters.
 
 # Summary
@@ -45,6 +46,7 @@ We asked how much of that cost can be removed, and what is lost.
 - **Clustering at 0.97** cuts the placed sequences to 92,406, one fold to 135.6 GB and 4.5 minutes, and the whole pipeline to 2 h 17 min (@tbl-funnel).
   It finds 83-93% of the flags at phylum to family level, 56% at genus level and 39% at species level (@tbl-clustering).
   Below 0.97 the tree barely shrinks, because every taxon keeps at least one representative (@tbl-sweep).
+- **A complete run** costs 30.9 hours of task walltime and 242.5 hours of CPU time at 1.0, 6.8 and 35.2 at 0.99, and 5.8 and 28.7 at 0.97 (@tbl-runtime).
 - **Clustering at 0.99** places 103,225 sequences, needs 152.5 GB and 5.6 minutes per fold, and finds more species-level flags than 0.97 (43% of the representatives of the 1.0 flags against 30%) and the same share at the other ranks (@tbl-099).
 - **The raxtax prefilter** should stay on.
   Without it SATIVA flags 6,222 more sequences, and among the flags that BLAST can judge most of the extra ones point at the declared taxon (@tbl-raxtax).
@@ -85,6 +87,14 @@ It counts as caught if its representative (same cluster and taxon) is flagged by
 The share of the flags of the 1.0 run found at 0.97 is therefore reported three ways: among the sequences placed in both runs, over all flags with this inheritance, and as the share of distinct representatives that are flagged (`scripts/large/reps.py`).
 The second counts member sequences, so a few large clusters weigh heavily: at genus level the ten largest representatives carry 5,958 of the 8,417 flags of the 1.0 run and one carries 2,140.
 The third counts each (cluster, taxon) pair once and is the more stable measure.
+
+## Run time
+
+The runs were resumed several times, so the elapsed time of a launch says little about the cost of a run.
+The cost of a complete run is the sum over its tasks of the walltime (`realtime` in the Nextflow trace) and of the CPU time (walltime times `%cpu`).
+A cached task keeps the figures of the task that ran, so the last successful launch of a run lists every task of a complete run once (`scripts/large/runtimes.py`).
+Tasks that failed or were aborted in any launch are summed separately.
+CPU time is the CPU actually used, not the cores allocated.
 
 ## BLAST check
 
@@ -133,6 +143,21 @@ Memory per fold grows roughly as the number of tips to the power 1.06 from 0.97 
 Time per fold grows faster than memory: 4.5 minutes at 92,406 sequences, 5.6 at 103,225 and 42 at 239,806; the 1.0 folds ran alone and at a different memory pressure, so that last step is not comparable.
 At 1.0 the folds ran one after the other in about 17.5 hours; at 0.97 three ran at a time with 300 GB each and the whole pipeline took 2 h 17 min.
 The scoring step (`loo-score`) needs 35.9 GB at 92,406 sequences, 1.1 GB at 103,225 and 2.5 GB at 239,806, which is unexplained and not a function of the number of sequences.
+
+```{r tbl-runtime}
+#| label: tbl-runtime
+#| tbl-cap: Cost of a complete run at three cluster identities, summed over all tasks, with the number of representatives after clustering and after the raxtax prefilter. All three runs used the correct model. Failed tasks are not in the sums.
+
+read_tsv("data/large_runtimes.tsv", show_col_types = FALSE) %>%
+  select(Metric = metric, Unit = unit, `1.0` = `id_1.0`, `0.99` = `id_0.99`, `0.97` = `id_0.97`) %>%
+  kable(format.args = list(big.mark = ","))
+```
+
+A complete run at 1.0 costs 30.9 hours of task walltime and 242.5 hours of CPU time, against 5.8 and 28.7 at 0.97: 5.3 times the walltime and 8.5 times the CPU time (@tbl-runtime).
+The placement folds are 64% of the walltime at 1.0 and a third at 0.99 and 0.97, where the tree search is as large (@tbl-runtime).
+The earlier runs under the wrong model cost 28.6 hours at 1.0 and 5.8 at 0.97, close to the 30.9 and 5.8 under the correct one (@tbl-runtime).
+The tasks that failed in the earlier 1.0 run (killed at the memory limit, and a failed alignment step) used another 6.2 hours; those of the 1.0 rerun used 0.6.
+The elapsed time depends on how many tasks fit on the server at once: at 1.0 only two folds of 415 GB fit at a time, so the folds alone took about 10 hours.
 
 ```{r tbl-sweep}
 #| label: tbl-sweep

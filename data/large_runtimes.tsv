@@ -1,0 +1,11 @@
+metric	unit	id_1.0	id_0.99	id_0.97	source
+representatives after clustering	n	318358	164357	148034	pipeline outputs
+after raxtax prefilter	n	299245	149308	133470	pipeline outputs
+tasks in a complete run	n	696	293	269	scripts/large/runtimes.py
+walltime, sum over tasks	h	30.9	6.8	5.8	scripts/large/runtimes.py
+CPU time, sum over tasks	h	242.5	35.2	28.7	scripts/large/runtimes.py
+placement folds, walltime	h	19.8	2.4	1.9	scripts/large/runtimes.py
+placement folds, CPU time	h	204.3	15.9	12.1	scripts/large/runtimes.py
+tree search, walltime	h	3.3	2.0	1.9	scripts/large/runtimes.py
+walltime lost to failed tasks	h	0.6	0.0	0.0	scripts/large/runtimes.py
+walltime, earlier run under the old model	h	28.6	NA	5.8	scripts/large/runtimes.py
