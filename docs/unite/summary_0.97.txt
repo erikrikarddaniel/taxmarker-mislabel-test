@@ -1,0 +1,60 @@
+== mmseqs 0.97: 25601 clusters, 31527 sequences
+size      clusters   % of clusters   sequences   % of sequences
+1           21744        84.9         21744        69.0
+2            2643        10.3          5286        16.8
+3-5          1119         4.4          3792        12.0
+6-10           91         0.4           649         2.1
+11-25           4         0.0            56         0.2
+26-50           0         0.0             0         0.0
+51-100          0         0.0             0         0.0
+>100            0         0.0             0         0.0
+largest 10 clusters: [19, 14, 12, 11, 10, 10, 10, 10, 10, 10]  median 1
+
+clusters with more than one distinct label at a rank (clusters of size >= 2):
+  clusters of size >= 2: 3857
+  >1 phylum  :      0  (0.0% of them)
+  >1 class   :      0  (0.0% of them)
+  >1 order   :      9  (0.2% of them)
+  >1 family  :     14  (0.4% of them)
+  >1 genus   :    214  (5.5% of them)
+  >1 species :   2565  (66.5% of them)
+
+per rank, share of sequences with a labelled taxon that has a same-label partner in its cluster (testable):
+  phylum  : 9771/31505 = 31.0%
+  class   : 9724/31339 = 31.0%
+  order   : 9601/31037 = 30.9%
+  family  : 9536/30883 = 30.9%
+  genus   : 8020/28474 = 28.2%
+  species : 1303/25738 = 5.1%
+
+per rank, taxa spread over clusters (taxa with >=2 sequences):
+  phylum  : 12 taxa, 0 entirely in one cluster, 0.2% of their sequences in the taxon's largest cluster
+  class   : 27 taxa, 0 entirely in one cluster, 0.3% of their sequences in the taxon's largest cluster
+  order   : 127 taxa, 1 entirely in one cluster, 1.6% of their sequences in the taxon's largest cluster
+  family  : 418 taxa, 9 entirely in one cluster, 3.9% of their sequences in the taxon's largest cluster
+  genus   : 3129 taxa, 289 entirely in one cluster, 23.0% of their sequences in the taxon's largest cluster
+
+20 largest clusters (size; phyla/families/genera/species counts; top families and genera):
+     19  p=1 f=1 g=1 s=19  fam: Burseraceae(19)  gen: Bursera(19)
+     14  p=1 f=1 g=1 s=12  fam: Fabaceae(14)  gen: Acacia(12), Fabaceae_gen_Incertae_sedis(2)
+     12  p=1 f=1 g=1 s=12  fam: Araliaceae(12)  gen: Polyscias(12)
+     11  p=1 f=1 g=1 s=11  fam: Orobanchaceae(11)  gen: Pedicularis(11)
+     10  p=1 f=1 g=1 s=9  fam: Brassicaceae(10)  gen: Eutrema(10)
+     10  p=1 f=1 g=1 s=9  fam: Asteraceae(10)  gen: Baccharis(10)
+     10  p=1 f=1 g=2 s=10  fam: Cistaceae(10)  gen: Cistus(8), Halimium(2)
+     10  p=1 f=1 g=2 s=8  fam: Orchidaceae(10)  gen: Stelis(6), Anathallis(2), Orchidaceae_gen_Incertae_sedis(2)
+     10  p=1 f=1 g=4 s=6  fam: Poaceae(10)  gen: Achnatherum(4), Poaceae_gen_Incertae_sedis(3), Eriocoma(1)
+     10  p=1 f=1 g=1 s=10  fam: Onagraceae(10)  gen: Fuchsia(10)
+     10  p=1 f=1 g=1 s=7  fam: Gesneriaceae(10)  gen: Primulina(10)
+      9  p=1 f=1 g=4 s=7  fam: Plantaginaceae(9)  gen: Sairocarpus(5), Antirrhinum(2), Mohavea(1)
+      9  p=1 f=1 g=1 s=9  fam: Sphagnaceae(9)  gen: Sphagnum(9)
+      9  p=1 f=1 g=6 s=6  fam: Asteraceae(9)  gen: Asteraceae_gen_Incertae_sedis(2), Xanthisma(2), Oonopsis(1)
+      9  p=1 f=1 g=1 s=9  fam: Orchidaceae(9)  gen: Bulbophyllum(9)
+      9  p=1 f=1 g=1 s=7  fam: Amaranthaceae(9)  gen: Dysphania(8), Amaranthaceae_gen_Incertae_sedis(1)
+      9  p=1 f=1 g=1 s=9  fam: Lamiaceae(9)  gen: Salvia(9)
+      9  p=1 f=1 g=1 s=9  fam: Orchidaceae(9)  gen: Thelymitra(9)
+      9  p=1 f=1 g=1 s=6  fam: Lauraceae(9)  gen: Neolitsea(8), Lauraceae_gen_Incertae_sedis(1)
+      9  p=1 f=1 g=1 s=9  fam: Cyperaceae(9)  gen: Carex(9)
+
+clusters mixing phyla or orders (size >= 2), with composition:
+  0 clusters with >1 phylum

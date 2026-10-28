@@ -1,0 +1,3 @@
+seq_name	original_label	predicted_label	lwr	original_label_exclusion	mismatch_rank	method
+UDB07656343	k__Viridiplantae;p__Bryophyta;c__Bryopsida;o__Dicranales;f__Ditrichaceae;g__Swartzia;s__Swartzia_sp	k__Viridiplantae;p__Bryophyta;c__Bryopsida;o__Dicranales;f__Ditrichaceae;g__Swartzia;s__Swartzia_gracilis	0.51	1.000	7	sativa
+UDB07656352	k__Viridiplantae;p__Bryophyta;c__Bryopsida;o__Dicranales;f__Ditrichaceae;g__Swartzia;s__Swartzia_sp	k__Viridiplantae;p__Bryophyta;c__Bryopsida;o__Dicranales;f__Ditrichaceae;g__Swartzia;s__Swartzia_aptera	0.51	1.000	7	sativa

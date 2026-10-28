@@ -53,3 +53,23 @@ mb_cells.tsv: $(SCRIPTS)/mb_cells.py
 # Execution traces copied from southern:projects/taxmarker/mb/<setup>/*_seed42.results/pipeline_info/ to $(MBCELLS)/traces/<setup>__<cell>.trace.txt
 mb_runtimes.tsv: $(SCRIPTS)/mb_runtimes.py
 	cd $(MBCELLS) && python3 $(SCRIPTS)/mb_runtimes.py > $(CURDIR)/$@
+
+# UNITE plant ITS test (unite-plants.qmd). $(UNITE) holds clusters/summary_<identity>.txt (scripts/unite/unitesum.py over the mmseqs output)
+# and pipeline/<cluster>/sequences.fasta (scripts/unite/select_clusters.py). $(UNITERUNS)/{before,untrimmed,trimmed}/run_<cluster>/out hold the
+# published results of the runs, `before` copied from southern:projects/taxmarker/its_unite/pipeline.
+UNITE     ?= $(HOME)/dev/taxmarker-its/unite
+UNITERUNS ?= $(HOME)/tmp/unite
+
+unite_sweep.tsv: $(SCRIPTS)/unite/unite_sweep.py
+	python3 -I $< $(UNITE)/clusters > $@
+
+unite_pipeline.tsv: $(SCRIPTS)/unite/unite_pipeline.py
+	python3 -I $< $(UNITE)/pipeline mafft=$(UNITERUNS)/before untrimmed=$(UNITERUNS)/untrimmed trimmed=$(UNITERUNS)/trimmed > $@
+
+# Needs mafft on the PATH.
+unite_group_identity.tsv: $(SCRIPTS)/unite/group_identity.sh $(SCRIPTS)/unite/group_identity.py
+	$< $(UNITE) > $@
+
+# Needs docker (raxtax 1.6.0 biocontainer).
+unite_raxtax_global.tsv: $(SCRIPTS)/unite/raxtax_global.py
+	python3 -I $< $(UNITE)/viridiplantae.fasta $(UNITE)/pipeline/bryophyta_fabaceae/taxonomy.tsv p__Bryophyta f__Fabaceae > $@

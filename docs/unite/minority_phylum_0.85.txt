@@ -1,0 +1,28 @@
+cluster size | majority phylum -> minority phylum | name | accession | SH | family (mmseqs 0.85)
+182 | Anthophyta->Viridiplantae_phy_Incertae_sedis | Viridiplantae_sp | KM515433 | SH0835738.10FU | Viridiplantae_fam_Incertae_sedis
+182 | Anthophyta->Viridiplantae_phy_Incertae_sedis | Viridiplantae_sp | UDB0623112 | SH0743621.10FU | Viridiplantae_fam_Incertae_sedis
+124 | Anthophyta->Viridiplantae_phy_Incertae_sedis | Viridiplantae_sp | KM515620 | SH0834173.10FU | Viridiplantae_fam_Incertae_sedis
+118 | Anthophyta->Viridiplantae_phy_Incertae_sedis | Viridiplantae_sp | MT922987 | SH0797374.10FU | Viridiplantae_fam_Incertae_sedis
+ 74 | Anthophyta->Viridiplantae_phy_Incertae_sedis | Viridiplantae_sp | MW226599 | SH0794745.10FU | Viridiplantae_fam_Incertae_sedis
+ 74 | Anthophyta->Coniferophyta | Leichhardtia_lloydii | MW226603 | SH0794798.10FU | Cupressaceae
+ 74 | Anthophyta->Coniferophyta | Leichhardtia_assimulata | MW226574 | SH0794767.10FU | Cupressaceae
+ 74 | Anthophyta->Coniferophyta | Leichhardtia_dognyensis | MW226578 | SH0794839.10FU | Cupressaceae
+ 74 | Anthophyta->Coniferophyta | Leichhardtia_brevis | MW226608 | SH0794741.10FU | Cupressaceae
+ 74 | Anthophyta->Viridiplantae_phy_Incertae_sedis | Viridiplantae_sp | MW226590 | SH0794765.10FU | Viridiplantae_fam_Incertae_sedis
+ 74 | Anthophyta->Coniferophyta | Leichhardtia_assimulata | OP251319 | SH0794764.10FU | Cupressaceae
+ 74 | Anthophyta->Coniferophyta | Leichhardtia_neocaledonica | OP251326 | SH0794831.10FU | Cupressaceae
+ 71 | Anthophyta->Viridiplantae_phy_Incertae_sedis | Viridiplantae_sp | FJ537289 | SH0770237.10FU | Viridiplantae_fam_Incertae_sedis
+ 67 | Chlorophyta->Viridiplantae_phy_Incertae_sedis | Viridiplantae_sp | OM236835 | SH0767268.10FU | Viridiplantae_fam_Incertae_sedis
+ 25 | Anthophyta->Viridiplantae_phy_Incertae_sedis | Viridiplantae_sp | KU681118 | SH0800736.10FU | Viridiplantae_fam_Incertae_sedis
+ 22 | Anthophyta->Viridiplantae_phy_Incertae_sedis | Viridiplantae_sp | KM515724 | SH0835871.10FU | Viridiplantae_fam_Incertae_sedis
+ 20 | Bryophyta->Anthophyta | Bocoa_viridiflora | FJ037826 | SH0807998.10FU | Fabaceae
+ 20 | Bryophyta->Anthophyta | Candolleodendron_brachystachyum | EF560805 | SH0808070.10FU | Fabaceae
+ 11 | Anthophyta->Viridiplantae_phy_Incertae_sedis | Viridiplantae_sp | MZ093417 | SH0796783.10FU | Viridiplantae_fam_Incertae_sedis
+  5 | Anthophyta->Viridiplantae_phy_Incertae_sedis | Viridiplantae_sp | KM515731 | SH0902024.10FU | Viridiplantae_fam_Incertae_sedis
+  5 | Anthophyta->Viridiplantae_phy_Incertae_sedis | Viridiplantae_sp | DQ501417 | SH0894866.10FU | Viridiplantae_fam_Incertae_sedis
+  5 | Marchantiophyta->Bryophyta | Bryophyta_sp | UDB05385526 | SH0736663.10FU | Bryophyta_fam_Incertae_sedis
+  5 | Anthophyta->Monilophyta | Asplenium_cordatum | AY165444 | SH0795815.10FU | Aspleniaceae
+  5 | Anthophyta->Monilophyta | Asplenium_dalhousiae | AY165475 | SH0804257.10FU | Aspleniaceae
+  4 | Chlorophyta->Viridiplantae_phy_Incertae_sedis | Viridiplantae_sp | MT887252 | SH0778162.10FU | Viridiplantae_fam_Incertae_sedis
+  3 | Anthophyta->Viridiplantae_phy_Incertae_sedis | Viridiplantae_sp | JX856408 | SH0809657.10FU | Viridiplantae_fam_Incertae_sedis
+  2 | Viridiplantae_phy_Incertae_sedis->Anthophyta | Impatiens_bomiensis | MT591749 | SH0801088.10FU | Balsaminaceae

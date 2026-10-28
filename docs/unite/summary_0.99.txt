@@ -1,0 +1,60 @@
+== mmseqs 0.99: 31438 clusters, 31527 sequences
+size      clusters   % of clusters   sequences   % of sequences
+1           31353        99.7         31353        99.4
+2              81         0.3           162         0.5
+3-5             4         0.0            12         0.0
+6-10            0         0.0             0         0.0
+11-25           0         0.0             0         0.0
+26-50           0         0.0             0         0.0
+51-100          0         0.0             0         0.0
+>100            0         0.0             0         0.0
+largest 10 clusters: [3, 3, 3, 3, 2, 2, 2, 2, 2, 2]  median 1
+
+clusters with more than one distinct label at a rank (clusters of size >= 2):
+  clusters of size >= 2: 85
+  >1 phylum  :      0  (0.0% of them)
+  >1 class   :      0  (0.0% of them)
+  >1 order   :      0  (0.0% of them)
+  >1 family  :      0  (0.0% of them)
+  >1 genus   :      1  (1.2% of them)
+  >1 species :     33  (38.8% of them)
+
+per rank, share of sequences with a labelled taxon that has a same-label partner in its cluster (testable):
+  phylum  : 170/31505 = 0.5%
+  class   : 167/31339 = 0.5%
+  order   : 163/31037 = 0.5%
+  family  : 163/30883 = 0.5%
+  genus   : 147/28474 = 0.5%
+  species : 74/25738 = 0.3%
+
+per rank, taxa spread over clusters (taxa with >=2 sequences):
+  phylum  : 12 taxa, 0 entirely in one cluster, 0.1% of their sequences in the taxon's largest cluster
+  class   : 27 taxa, 0 entirely in one cluster, 0.1% of their sequences in the taxon's largest cluster
+  order   : 127 taxa, 0 entirely in one cluster, 0.5% of their sequences in the taxon's largest cluster
+  family  : 418 taxa, 0 entirely in one cluster, 1.5% of their sequences in the taxon's largest cluster
+  genus   : 3129 taxa, 2 entirely in one cluster, 12.6% of their sequences in the taxon's largest cluster
+
+20 largest clusters (size; phyla/families/genera/species counts; top families and genera):
+      3  p=1 f=1 g=1 s=2  fam: Theaceae(3)  gen: Camellia(3)
+      3  p=1 f=1 g=1 s=2  fam: Rosaceae(3)  gen: Prunus(3)
+      3  p=1 f=1 g=1 s=2  fam: Amblystegiaceae(3)  gen: Palustriella(3)
+      3  p=1 f=0 g=1 s=0  fam: Chlorophyta_fam_Incertae_sedis(2), Prasiolales_fam_Incertae_sedis(1)  gen: Chlorophyta_gen_Incertae_sedis(2), Elliptochloris(1)
+      2  p=1 f=1 g=1 s=1  fam: Rosaceae(2)  gen: Amelanchier(2)
+      2  p=1 f=1 g=1 s=1  fam: Aquifoliaceae(2)  gen: Ilex(2)
+      2  p=1 f=1 g=1 s=2  fam: Amaranthaceae(2)  gen: Grayia(2)
+      2  p=1 f=1 g=1 s=1  fam: Aulacomniaceae(2)  gen: Aulacomnium(2)
+      2  p=1 f=1 g=1 s=2  fam: Brassicaceae(2)  gen: Ionopsidium(2)
+      2  p=1 f=1 g=1 s=2  fam: Poaceae(2)  gen: Cynodon(2)
+      2  p=1 f=1 g=1 s=1  fam: Fabaceae(2)  gen: Erythrina(2)
+      2  p=1 f=1 g=1 s=1  fam: Chlorellaceae(2)  gen: Chlorella(2)
+      2  p=1 f=1 g=1 s=2  fam: Asteraceae(2)  gen: Baccharis(2)
+      2  p=1 f=1 g=1 s=1  fam: Fabaceae(2)  gen: Acacia(2)
+      2  p=1 f=1 g=1 s=1  fam: Fagaceae(2)  gen: Quercus(2)
+      2  p=1 f=1 g=1 s=1  fam: Pottiaceae(2)  gen: Didymodon(1), Pottiaceae_gen_Incertae_sedis(1)
+      2  p=1 f=1 g=1 s=2  fam: Polygonaceae(2)  gen: Fagopyrum(2)
+      2  p=1 f=1 g=1 s=1  fam: Aulacomniaceae(2)  gen: Aulacomnium(2)
+      2  p=1 f=1 g=1 s=0  fam: Poaceae(2)  gen: Dactyloctenium(2)
+      2  p=1 f=1 g=1 s=2  fam: Papaveraceae(2)  gen: Corydalis(2)
+
+clusters mixing phyla or orders (size >= 2), with composition:
+  0 clusters with >1 phylum

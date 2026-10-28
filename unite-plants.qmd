@@ -1,0 +1,295 @@
+---
+title: "Plant ITS from UNITE: mmseqs clusters and taxmarker on four clusters"
+author: "matricaria.suaveolens@gmail.com"
+date: "`r format(Sys.time(), '%Y-%m-%d')`"
+format:
+  html:
+    code-fold: true
+    toc: true
+    embed-resources: true
+bibliography:
+  - bibliography.bib
+  - tools.bib
+---
+
+```{r}
+#| label: setup
+#| echo: false
+
+knitr::opts_chunk$set(echo = TRUE, fig.path = "figures/unite-", fig.width = 9)
+ggplot2::theme_set(ggplot2::theme_bw())
+```
+
+```{r}
+#| label: libraries
+#| message: false
+#| include: false
+
+library(dplyr, warn.conflicts = FALSE)
+library(ggplot2)
+library(knitr)
+library(readr)
+library(tidyr)
+```
+
+# Version history
+
+- 2026-10-28: first draft, written from the analysis of the same day.
+
+# Summary
+
+We took the plant sequences of UNITE's general ITS release (31,527 sequences) to see whether taxmarker can test them.
+Clustering with mmseqs decides which sequences have a relative to be tested against, and four clusters were run through taxmarker to see what the flags look like.
+
+- **Clustering.**
+  At 85% identity the 31,527 sequences fall into 4,626 clusters.
+  Of the sequences, 6.4% are alone in their cluster and 79.9% are in clusters of six or more (@fig-sweep).
+- **What can be tested.**
+  A sequence can be tested at a rank only if another sequence with the same label at that rank is in its cluster.
+  At 85% this holds for 93.3% of the sequences at family level, 82.3% at genus level and 13.5% at species level (@fig-sweep).
+- **Four clusters** went through taxmarker (@tbl-pipeline).
+  The *Carex* cluster (336 sequences) has three weak species-level flags and the *Swartzia* and Fabaceae cluster (20) none.
+  The Orchidaceae cluster (175) has 13 flags, 12 of them between genera, and the *Hoya* cluster (74) two.
+- **Two genera have the wrong lineage in UNITE.**
+  All six sequences of *Leichhardtia* are labelled as conifers (Cupressaceae) and all 18 of *Swartzia* as mosses (Ditrichaceae), but their sequences group with Apocynaceae and with Fabaceae, and *Swartzia* is a legume genus (@tbl-genus).
+  The placement flags one of these 24 sequences, because a group with the same label supports itself (@tbl-pipeline).
+- **The taxonomy has to be cleaned before sequences are tested**, and the same is likely for other databases.
+  A test that compares a sequence with the labels of its relatives cannot find an error that all of them share.
+
+# Introduction
+
+taxmarker flags a sequence when its placement in a reference tree disagrees with its declared taxonomy.
+A plant ITS database differs from the bacterial 16S data used so far: the sequences vary in length and in the number of indels, so one alignment of everything may not be meaningful ([nf-core/taxmarker#68](https://github.com/nf-core/taxmarker/issues/68)).
+This report asks, for the plant sequences of UNITE, how many sequences have a relative to be tested against, and what taxmarker does with four clusters of them.
+It is a first look, not a benchmark: no mislabelled sequences were injected, and the flags are judged by hand.
+
+# Materials and Methods
+
+## Input
+
+The UNITE general FASTA release of 2024-04-04 [@unite2020] was subset to the records whose lineage starts with `k__Viridiplantae`: 31,527 of 142,216 sequences.
+A record looks like `Plukenetia_stipellata|GQ463739|SH0819708.10FU|reps|k__Viridiplantae;p__Anthophyta;c__Eudicotyledonae;o__Malpighiales;f__Euphorbiaceae;g__Plukenetia;s__Plukenetia_stipellata`.
+The phylum names are those of UNITE: Anthophyta (27,080 sequences), Chlorophyta (2,012), Bryophyta (1,470), Marchantiophyta (684), Coniferophyta (89), Lycopodiophyta (52), Monilophyta (37), Cycadophyta (28) and a few others.
+The subset is made by `scripts/unite/subset.sh`.
+
+## Clustering
+
+mmseqs2 `easy-cluster` [@mmseqs2] (version `15.6f452`) was run at minimum sequence identity 0.99, 0.97, 0.95, 0.90, 0.85, 0.80 and 0.75 with `-c 0.8 --cov-mode 0` (`scripts/unite/cluster.sh`).
+Placeholder names (`*_sp`, `*Incertae*`, `unidentified*`) do not count as labels in the summaries below.
+The summaries (`scripts/unite/unitesum.py`) give, for each identity, the cluster size classes, the clusters with more than one label at a rank, and the testable share: of the sequences with a label at a rank, the share that have another sequence with the same label in their cluster.
+A sequence with no such partner cannot be tested at that rank, because there is nothing for the placement to agree with.
+
+## Pipeline runs
+
+Four clusters from the 0.85 run were written as pipeline input (`scripts/unite/select_clusters.py`), the lineage of each record as the taxonomy:
+
+- the largest cluster that is almost only *Carex* (336 sequences), as a control;
+- the largest cluster that is only Orchidaceae (175; representative *Scaphosepalum gibberosum*);
+- the cluster with the *Hoya* sequences and the six *Leichhardtia* sequences (74), one of five clusters in which sequences from more than one phylum are labelled;
+- a cluster of 18 sequences labelled *Swartzia* (Bryophyta) and two Fabaceae (20).
+
+The runs used the branch `unresolved-placeholder-ranks` of nf-core/taxmarker (commit `f7ee5c9`, [nf-core/taxmarker#75](https://github.com/nf-core/taxmarker/pull/75)) with default settings, raxtax 1.6.0, RAxML-NG 2.0.3 and sativa-epang 0.10.2, on 4 CPUs of a workstation (`scripts/unite/run_pipeline.sh`).
+That branch has no alignment step, so each cluster was aligned beforehand with MAFFT [@mafft] 7.505 (`--auto --preservecase`, `scripts/unite/align.sh`).
+The first runs, without the trimming of placeholder names described under Results, used the branch `mafft-fallback` (commit `cbf604b`, [nf-core/taxmarker#73](https://github.com/nf-core/taxmarker/pull/73)) on the same alignments.
+
+A flag has a mismatch rank (2 phylum ... 7 species); raxtax flags come from the prefilter and SATIVA flags from the placement.
+A flag is counted as involving a placeholder name when the lowest rank of the declared or the proposed label ends in `sp` or `sp.`, contains `Incertae sedis` or starts with `unidentified`.
+
+## Genus against declared parent
+
+For the six *Leichhardtia* sequences and the 18 *Swartzia* sequences we asked which taxon they are closest to.
+Each group was aligned with MAFFT (`--auto --preservecase`) together with a sample of its declared parent taxon (all 83 other Coniferophyta; 60 random Bryophyta outside the cluster) and of the taxon it seemed to belong to (20 random Apocynaceae; 60 random Fabaceae outside the cluster).
+For each sequence the best identity, over the aligned columns where both sequences have a residue (at least 100), to each sample is reported, and eight members of the parent sample are given the same treatment as a scale for what is normal inside the parent (`scripts/unite/group_identity.py`).
+MAFFT does not give the same alignment on every run, and identities moved by up to about 0.02 between runs.
+raxtax (the version and `--skip-exact-matches` setting of the pipeline) was also run on the 20 sequences of the *Swartzia* cluster against a database of the cluster and all other UNITE sequences of Bryophyta and Fabaceae (3,572 sequences), to see whether references outside the cluster make a difference (`scripts/unite/raxtax_global.py`).
+
+## Scripts and data
+
+`scripts/unite/` holds the code and `data/unite_*.tsv` the tables, built by `data/Makefile` from the cluster summaries, the published results of the runs and the UNITE subset (`make unite_sweep.tsv unite_pipeline.tsv unite_group_identity.tsv unite_raxtax_global.tsv`, with `UNITE` and `UNITERUNS` set; the last needs docker).
+`docs/unite/` keeps the cluster summaries (`summary_<identity>.txt`), the sequences that are in a cluster with a majority of another phylum (`minority_phylum_0.85.txt`) and the flag tables of the runs (`mislabels_<run>_<cluster>.tsv`).
+The UNITE release, the subset and the mmseqs output are not in the repository.
+
+# Results
+
+## Placeholder names
+
+UNITE marks sequences that are not identified to a rank with a name that only says "unresolved": 5,789 of the 31,527 sequences have a species name ending in `_sp` (`Orchidaceae_sp`), and 3,053 and 644 have a genus or a family called `*_Incertae_sedis`.
+In a first run taxmarker treated these names as taxa.
+In the Orchidaceae cluster 19 of the 31 flags involved one, for example a sequence declared `Orchidaceae_gen_Incertae_sedis` that was placed with a real genus.
+We changed the pipeline to remove such ranks from the end of a lineage ([nf-core/taxmarker#75](https://github.com/nf-core/taxmarker/pull/75)), which gives 13 flags for the same cluster and alignment, and all results below are from that version.
+
+## Clusters
+
+```{r}
+#| label: fig-sweep
+#| fig-cap: "mmseqs clusters of the 31,527 UNITE Viridiplantae sequences by minimum identity (x axis proportional; the number of clusters is printed at the top). Alone: share of the sequences that are in a cluster of one. In 6 or more: share in clusters of six or more. Testable: share of the sequences with a label at the rank that have a sequence with the same label in their cluster."
+#| fig-height: 5
+
+sweep <- read_tsv("data/unite_sweep.tsv", show_col_types = FALSE)
+
+shares <- sweep %>%
+  mutate(
+    big = `seqs_size_6-10` + `seqs_size_11-25` + `seqs_size_26-50` + `seqs_size_51-100` + `seqs_size_>100`
+  ) %>%
+  transmute(
+    identity,
+    `Alone` = 100 * clusters_size_1 / sequences,
+    `In 6 or more` = 100 * big / sequences,
+    `Testable family` = testable_family,
+    `Testable genus` = testable_genus,
+    `Testable species` = testable_species
+  ) %>%
+  pivot_longer(-identity, names_to = "measure", values_to = "percent") %>%
+  mutate(measure = factor(measure, levels = c("In 6 or more", "Testable family", "Testable genus", "Testable species", "Alone")))
+
+ggplot(shares, aes(identity, percent, colour = measure)) +
+  geom_line() +
+  geom_point() +
+  geom_text(
+    data = sweep, aes(identity, 106, label = format(clusters, big.mark = ",")),
+    inherit.aes = FALSE, size = 3
+  ) +
+  scale_x_continuous(breaks = sweep$identity) +
+  scale_y_continuous(breaks = seq(0, 100, 20), limits = c(0, 108)) +
+  scale_colour_brewer(palette = "Set1") +
+  labs(x = "Minimum sequence identity", y = "Percent of the sequences", colour = NULL)
+```
+
+Below 0.97 the number of clusters falls steeply (numbers at the top of @fig-sweep), and by 0.85 most sequences have relatives: 79.9% are in clusters of six or more.
+The testable share saturates between 0.85 and 0.75 at 93-97% for the ranks from phylum to family, 82-84% at genus level and 14% at species level (@fig-sweep).
+The species-level share is low because most species have one sequence only; it does not grow with lower identity.
+Auguste Gardette's ITS1 test block (19,990 sequences, median length 223 nt against 624 nt here) had 66-69% testable at genus level and 73-78% at family level at 0.85 and 0.80, so these longer sequences are easier to test at both ranks.
+
+```{r}
+#| label: tbl-mix
+#| tbl-cap: "Clusters of two or more sequences with more than one label at the rank, among the clusters of two or more (placeholder names do not count as labels)."
+
+sweep %>%
+  mutate(ge2 = clusters - clusters_size_1) %>%
+  transmute(
+    Identity = identity,
+    `Clusters of 2 or more` = ge2,
+    `> 1 phylum` = multi_phylum,
+    `> 1 order` = multi_order,
+    `> 1 family` = multi_family,
+    `> 1 genus` = multi_genus,
+    `> 1 species` = multi_species
+  ) %>%
+  kable()
+```
+
+At 0.85, five clusters hold sequences from more than one phylum and 101 of 2,593 clusters of two or more have more than one family (@tbl-mix).
+Of the 31,527 sequences, 428 differ in family from the majority of their cluster.
+The phylum conflicts are few enough to inspect by hand: one is the *Hoya*/*Leichhardtia* cluster below, one is the *Swartzia* and Fabaceae cluster below, one has liverworts and a moss, and two have a fern among flowering plants.
+
+## Four clusters through taxmarker
+
+```{r}
+#| label: tbl-pipeline
+#| tbl-cap: "Four 0.85 clusters through taxmarker. Input: sequences in; after raxtax: sequences left after the prefilter; flags: all flags, split by method and by mismatch rank."
+
+pl <- read_tsv("data/unite_pipeline.tsv", show_col_types = FALSE)
+
+pl %>%
+  filter(run == "trimmed") %>%
+  transmute(
+    Cluster = recode(cluster, carex = "Carex", orchidaceae = "Orchidaceae", hoya_leichhardtia = "Hoya, Leichhardtia", bryophyta_fabaceae = "Swartzia, Fabaceae"),
+    Input = input,
+    `After raxtax` = after_raxtax,
+    Flags = flags,
+    raxtax = raxtax_flags,
+    SATIVA = sativa_flags,
+    Phylum = rank_p,
+    Genus = rank_g,
+    Species = rank_s
+  ) %>%
+  kable()
+```
+
+The runs took 36 seconds (*Swartzia* and Fabaceae), 54 seconds (*Hoya*), 2.3 minutes (Orchidaceae) and 18 minutes (*Carex*), as read from the Nextflow logs on a shared workstation.
+The *Carex* cluster is a clean control: 336 sequences, three species-level flags with a placement weight of 0.51, none above species level.
+
+**Orchidaceae.**
+The cluster of 175 sequences in 28 genera loses 6 sequences to raxtax and gets 13 flags: 12 at genus level and one at species level.
+All of them propose another genus of the same family.
+Four of the seven SATIVA flags have a placement weight of 1.0, and all four propose *Specklinia*, for two sequences declared *Muscarella* and two declared *Pleurothallis*.
+
+The *Swartzia* and Fabaceae cluster (18 sequences labelled *Swartzia* and two Fabaceae) has no flags, and the *Hoya* cluster two; both are explained below.
+
+## Two genera with the wrong lineage
+
+Two of the four clusters hold a whole genus whose lineage does not fit it.
+The *Hoya* cluster (74 sequences) has 66 Anthophyta (angiosperms) and six sequences of *Leichhardtia* labelled `p__Coniferophyta;c__Pinopsida;o__Pinales;f__Cupressaceae`, so they are the only ones labelled as conifers.
+The *Swartzia* cluster (20) has 18 sequences of *Swartzia* labelled Bryophyta/Ditrichaceae and two Fabaceae, *Bocoa viridiflora* and *Candolleodendron brachystachyum*.
+*Leichhardtia* is an Apocynaceae genus (reinstated in 2021) and *Swartzia* a genus of legumes (Fabaceae), and the records are all the records of the two genera in UNITE plants, so it is the genus that carries the wrong lineage and not single sequences.
+
+```{r}
+#| label: tbl-genus
+#| tbl-cap: "Best identity of the sequences of two genera to other members of the group, to a sample of the declared parent taxon and to a sample of the taxon they seem to belong to (range over the sequences of the group). Scale: the same two identities for eight members of the parent sample."
+
+gi <- read_tsv("data/unite_group_identity.tsv", show_col_types = FALSE)
+rng <- function(x) sprintf("%.2f-%.2f", min(x), max(x))
+
+gi %>%
+  mutate(best_targets = suppressWarnings(as.numeric(best_targets))) %>%
+  group_by(group) %>%
+  summarise(
+    Sequences = sum(role == "target"),
+    `In the group` = rng(best_targets[role == "target"]),
+    `Declared parent` = rng(best_parent[role == "target"]),
+    `Other taxon` = rng(best_contrast[role == "target"]),
+    `Scale, parent` = rng(best_parent[role == "reference"]),
+    `Scale, other taxon` = rng(best_contrast[role == "reference"]),
+    .groups = "drop"
+  ) %>%
+  mutate(
+    Genus = recode(group, leichhardtia = "Leichhardtia (parent Coniferophyta, other Apocynaceae)", swartzia = "Swartzia (parent Bryophyta, other Fabaceae)"),
+    .before = 1
+  ) %>%
+  select(-group) %>%
+  kable()
+```
+
+The sequences agree with the real taxonomy and not with the lineage: both groups are about as far from their declared parent taxon as unrelated groups are (about 0.6 to 0.7), and much closer to the taxon they cluster with (@tbl-genus).
+The six *Leichhardtia* sequences group with the Apocynaceae (*Hoya*, *Marsdenia*) in the tree, and the 18 *Swartzia* sequences with the two Fabaceae, which are the correctly labelled ones.
+
+The pipeline finds almost none of this.
+Of the 24 sequences, one is flagged: MW226608, a *Leichhardtia*, at phylum rank with `Apocynaceae;Marsdenia` proposed.
+A likely reason for the other five is that the six form one clade in the reference tree with no other sequence in it, so a sequence that is left out is placed among five that carry the same declared lineage.
+The 18 *Swartzia* sequences are not flagged, and raxtax does not flag them either when all other UNITE mosses and Fabaceae are references: it gives Bryophyta a probability of 0.91 to 1.00 for each of them (`data/unite_raxtax_global.tsv`), because the other 17 sequences with the same label are their closest relatives.
+The error in the reference also creates a flag on a correctly labelled sequence: MW226600, a *Marsdenia hemiptera*, is flagged by raxtax with *Leichhardtia* as the proposed genus.
+The comparison sets are samples, not all UNITE sequences, so a real but poorly sampled lineage of the parent taxon cannot be excluded by the identities alone; for these two genera the name of the genus settles it.
+
+# Discussion
+
+**UNITE plants can be tested, mostly above species level.**
+At 85% identity, 93% of the sequences can be tested at family level and 82% at genus level.
+The species level is out of reach for most sequences because most species are represented once.
+
+**The taxonomy has to be cleaned first.**
+Two of the four clusters hold a whole genus with a lineage that does not fit, *Leichhardtia* (6 sequences) and *Swartzia* (18).
+A placement test compares a sequence with the labels of its relatives, so a wrong label that all of them share cannot be found: the placement flags one of the 24 sequences and raxtax none.
+UNITE's taxonomy should therefore be cleaned before sequences are tested, for example by checking each genus against the lineage in an accepted-names backbone, and other databases are likely to have the same kind of error.
+Such a check was not tried here.
+
+**A phylum gate catches only part of it.**
+A gate that sets aside the sequences of a minority phylum in a cluster ([nf-core/taxmarker#76](https://github.com/nf-core/taxmarker/issues/76)) would catch the six *Leichhardtia* sequences, 6 of 74 in a cluster otherwise of Anthophyta.
+On all of UNITE plants it would touch 5 clusters and 11 sequences of 31,527 at 85% identity, with no ties; at 90% it would touch 6 sequences in 4 clusters and at 80% 16 in 7.
+In the *Swartzia* cluster the wrong label is the majority, so the gate would set aside the two correct Fabaceae and keep the 18 sequences that should go.
+The three single sequences in clusters of five (a moss among liverworts, a fern among flowering plants twice) are not judged here; a rule for tiny clusters would leave them undecided.
+The gate was not run: the counts are those of the cluster label tables.
+
+**Limits.**
+Four clusters from one release, with default settings and no injected mislabelled sequences.
+The flags were judged by hand and by the placement weights, not against a truth set.
+The number of testable sequences is a property of the clustering at one coverage setting, and the clusters were not tested for how the alignment behaves in clusters of divergent ITS ([nf-core/taxmarker#68](https://github.com/nf-core/taxmarker/issues/68)).
+
+**Open.**
+A precluster gate that sends only clusters of enough relatives to the pipeline has been designed and is not built, and so has a check of genera against an accepted-names backbone.
+The pipeline does not warn when the gap filter removes most of a MAFFT alignment.
+
+# References
+
+```{r}
+# vim: sw=2
+```

@@ -1,0 +1,67 @@
+== mmseqs 0.80: 2875 clusters, 31527 sequences
+size      clusters   % of clusters   sequences   % of sequences
+1            1173        40.8          1173         3.7
+2             395        13.7           790         2.5
+3-5           431        15.0          1664         5.3
+6-10          312        10.9          2382         7.6
+11-25         283         9.8          4621        14.7
+26-50         151         5.3          5374        17.0
+51-100         70         2.4          4917        15.6
+>100           60         2.1         10606        33.6
+largest 10 clusters: [410, 390, 376, 370, 288, 268, 266, 263, 236, 223]  median 2
+
+clusters with more than one distinct label at a rank (clusters of size >= 2):
+  clusters of size >= 2: 1702
+  >1 phylum  :      7  (0.4% of them)
+  >1 class   :     18  (1.1% of them)
+  >1 order   :     78  (4.6% of them)
+  >1 family  :    136  (8.0% of them)
+  >1 genus   :    811  (47.6% of them)
+  >1 species :   1340  (78.7% of them)
+
+per rank, share of sequences with a labelled taxon that has a same-label partner in its cluster (testable):
+  phylum  : 30332/31505 = 96.3%
+  class   : 30186/31339 = 96.3%
+  order   : 29845/31037 = 96.2%
+  family  : 29618/30883 = 95.9%
+  genus   : 23830/28474 = 83.7%
+  species : 3568/25738 = 13.9%
+
+per rank, taxa spread over clusters (taxa with >=2 sequences):
+  phylum  : 12 taxa, 0 entirely in one cluster, 2.7% of their sequences in the taxon's largest cluster
+  class   : 27 taxa, 2 entirely in one cluster, 4.5% of their sequences in the taxon's largest cluster
+  order   : 127 taxa, 10 entirely in one cluster, 21.4% of their sequences in the taxon's largest cluster
+  family  : 418 taxa, 107 entirely in one cluster, 39.3% of their sequences in the taxon's largest cluster
+  genus   : 3129 taxa, 2095 entirely in one cluster, 83.0% of their sequences in the taxon's largest cluster
+
+20 largest clusters (size; phyla/families/genera/species counts; top families and genera):
+    410  p=1 f=1 g=117 s=281  fam: Apiaceae(404), Eudicotyledonae_fam_Incertae_sedis(6)  gen: Apiaceae_gen_Incertae_sedis(85), Angelica(25), Perideridia(17)
+    390  p=1 f=1 g=138 s=308  fam: Asteraceae(388), Eudicotyledonae_fam_Incertae_sedis(2)  gen: Asteraceae_gen_Incertae_sedis(58), Helichrysum(37), Baccharis(28)
+    376  p=1 f=7 g=89 s=323  fam: Lamiaceae(334), Phrymaceae(10), Acanthaceae(9)  gen: Salvia(121), Lamiaceae_gen_Incertae_sedis(22), Elsholtzia(15)
+    370  p=1 f=1 g=11 s=345  fam: Cyperaceae(370)  gen: Carex(336), Schoenus(18), Trichophorum(3)
+    288  p=1 f=1 g=87 s=229  fam: Asteraceae(286), Eudicotyledonae_fam_Incertae_sedis(2)  gen: Senecio(59), Asteraceae_gen_Incertae_sedis(37), Sinosenecio(27)
+    268  p=1 f=1 g=89 s=222  fam: Orchidaceae(268)  gen: Maxillaria(40), Orchidaceae_gen_Incertae_sedis(28), Oncidium(27)
+    266  p=1 f=1 g=46 s=224  fam: Orchidaceae(266)  gen: Specklinia(34), Acianthera(28), Stelis(25)
+    263  p=1 f=1 g=56 s=245  fam: Orchidaceae(263)  gen: Bulbophyllum(102), Dendrobium(22), Epidendrum(15)
+    236  p=1 f=1 g=42 s=172  fam: Asteraceae(232), Eudicotyledonae_fam_Incertae_sedis(3), Viridiplantae_fam_Incertae_sedis(1)  gen: Asteraceae_gen_Incertae_sedis(36), Lactuca(35), Crepis(31)
+    223  p=1 f=1 g=28 s=184  fam: Fabaceae(219), Eudicotyledonae_fam_Incertae_sedis(2), Anthophyta_fam_Incertae_sedis(1)  gen: Trifolium(39), Fabaceae_gen_Incertae_sedis(27), Onobrychis(19)
+    223  p=1 f=1 g=23 s=184  fam: Gesneriaceae(223)  gen: Primulina(119), Petrocodon(26), Cyrtandra(19)
+    219  p=1 f=1 g=21 s=193  fam: Orobanchaceae(219)  gen: Pedicularis(162), Agalinis(16), Orobanche(14)
+    216  p=1 f=1 g=10 s=180  fam: Convolvulaceae(213), Eudicotyledonae_fam_Incertae_sedis(3)  gen: Ipomoea(154), Convolvulaceae_gen_Incertae_sedis(22), Convolvulus(19)
+    210  p=1 f=1 g=29 s=172  fam: Fabaceae(210)  gen: Acacia(112), Fabaceae_gen_Incertae_sedis(21), Senegalia(18)
+    205  p=1 f=1 g=59 s=172  fam: Myrtaceae(202), Eudicotyledonae_fam_Incertae_sedis(2), Myrtales_fam_Incertae_sedis(1)  gen: Eugenia(45), Myrtaceae_gen_Incertae_sedis(20), Myrcia(13)
+    200  p=1 f=1 g=25 s=166  fam: Caryophyllaceae(200)  gen: Silene(110), Caryophyllaceae_gen_Incertae_sedis(14), Acanthophyllum(10)
+    195  p=1 f=3 g=70 s=145  fam: Rubiaceae(167), Loganiaceae(27), Rhamnaceae(1)  gen: Rubiaceae_gen_Incertae_sedis(31), Strychnos(26), Coffea(18)
+    190  p=1 f=4 g=46 s=141  fam: Rutaceae(95), Meliaceae(92), Eudicotyledonae_fam_Incertae_sedis(1)  gen: Aglaia(52), Zanthoxylum(28), Ruagea(14)
+    189  p=1 f=1 g=17 s=167  fam: Solanaceae(189)  gen: Solanum(138), Solanaceae_gen_Incertae_sedis(10), Salpichroa(9)
+    185  p=1 f=1 g=50 s=160  fam: Poaceae(185)  gen: Muhlenbergia(37), Eragrostis(25), Poaceae_gen_Incertae_sedis(18)
+
+clusters mixing phyla or orders (size >= 2), with composition:
+  7 clusters with >1 phylum
+   106  Anthophyta(104), Monilophyta(2)  e.g. Artemisia_chamaemelifolia
+    66  Anthophyta(59), Coniferophyta(5), Viridiplantae_phy_Incertae_sedis(2)  e.g. Telosma_accedens
+    30  Anthophyta(29), Monilophyta(1)  e.g. Aragoa_cupressina
+    22  Bryophyta(18), Anthophyta(4)  e.g. Swartzia_polyphylla
+     9  Anthophyta(8), Monilophyta(1)  e.g. Tragopogon_sp
+     8  Anthophyta(7), Coniferophyta(1)  e.g. Hoya_anulata
+     5  Marchantiophyta(3), Bryophyta(2)  e.g. Takakia_sp

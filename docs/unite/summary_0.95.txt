@@ -1,0 +1,63 @@
+== mmseqs 0.95: 17384 clusters, 31527 sequences
+size      clusters   % of clusters   sequences   % of sequences
+1           11947        68.7         11947        37.9
+2            2659        15.3          5318        16.9
+3-5          2030        11.7          7342        23.3
+6-10          572         3.3          4197        13.3
+11-25         166         1.0          2373         7.5
+26-50          10         0.1           350         1.1
+51-100          0         0.0             0         0.0
+>100            0         0.0             0         0.0
+largest 10 clusters: [47, 46, 43, 41, 34, 30, 30, 27, 26, 26]  median 1
+
+clusters with more than one distinct label at a rank (clusters of size >= 2):
+  clusters of size >= 2: 5437
+  >1 phylum  :      3  (0.1% of them)
+  >1 class   :      5  (0.1% of them)
+  >1 order   :     23  (0.4% of them)
+  >1 family  :     36  (0.7% of them)
+  >1 genus   :    626  (11.5% of them)
+  >1 species :   3940  (72.5% of them)
+
+per rank, share of sequences with a labelled taxon that has a same-label partner in its cluster (testable):
+  phylum  : 19559/31505 = 62.1%
+  class   : 19474/31339 = 62.1%
+  order   : 19260/31037 = 62.1%
+  family  : 19159/30883 = 62.0%
+  genus   : 16102/28474 = 56.5%
+  species : 2369/25738 = 9.2%
+
+per rank, taxa spread over clusters (taxa with >=2 sequences):
+  phylum  : 12 taxa, 0 entirely in one cluster, 0.3% of their sequences in the taxon's largest cluster
+  class   : 27 taxa, 1 entirely in one cluster, 0.7% of their sequences in the taxon's largest cluster
+  order   : 127 taxa, 3 entirely in one cluster, 3.4% of their sequences in the taxon's largest cluster
+  family  : 418 taxa, 32 entirely in one cluster, 7.8% of their sequences in the taxon's largest cluster
+  genus   : 3129 taxa, 835 entirely in one cluster, 38.9% of their sequences in the taxon's largest cluster
+
+20 largest clusters (size; phyla/families/genera/species counts; top families and genera):
+     47  p=1 f=1 g=1 s=47  fam: Ericaceae(47)  gen: Erica(47)
+     46  p=1 f=1 g=13 s=37  fam: Asteraceae(46)  gen: Baccharis(24), Asteraceae_gen_Incertae_sedis(6), Hinterhubera(2)
+     43  p=1 f=1 g=1 s=41  fam: Cyperaceae(43)  gen: Carex(43)
+     41  p=1 f=1 g=13 s=29  fam: Apiaceae(40), Eudicotyledonae_fam_Incertae_sedis(1)  gen: Angelica(14), Apiaceae_gen_Incertae_sedis(10), Lomatium(4)
+     34  p=1 f=1 g=2 s=30  fam: Myrtaceae(34)  gen: Eugenia(31), Myrtaceae_gen_Incertae_sedis(2), Calyptrogenia(1)
+     30  p=1 f=1 g=1 s=25  fam: Moraceae(29), Eudicotyledonae_fam_Incertae_sedis(1)  gen: Ficus(29), Eudicotyledonae_gen_Incertae_sedis(1)
+     30  p=1 f=1 g=10 s=23  fam: Myrtaceae(30)  gen: Myrcia(10), Myrtaceae_gen_Incertae_sedis(7), Plinia(3)
+     27  p=1 f=1 g=2 s=24  fam: Caryophyllaceae(27)  gen: Silene(26), Pseudostellaria(1)
+     26  p=1 f=1 g=14 s=18  fam: Orchidaceae(26)  gen: Gastrochilus(5), Orchidaceae_gen_Incertae_sedis(5), Pomatocalpa(3)
+     26  p=1 f=1 g=2 s=18  fam: Melastomataceae(26)  gen: Miconia(18), Melastomataceae_gen_Incertae_sedis(7), Clidemia(1)
+     25  p=1 f=1 g=1 s=23  fam: Orobanchaceae(25)  gen: Pedicularis(24), Orobanchaceae_gen_Incertae_sedis(1)
+     24  p=1 f=1 g=1 s=18  fam: Primulaceae(23), Eudicotyledonae_fam_Incertae_sedis(1)  gen: Primula(23), Eudicotyledonae_gen_Incertae_sedis(1)
+     24  p=1 f=1 g=2 s=19  fam: Asteraceae(24)  gen: Senecio(18), Asteraceae_gen_Incertae_sedis(4), Jacobaea(2)
+     23  p=1 f=1 g=3 s=20  fam: Fabaceae(23)  gen: Vicia(18), Fabaceae_gen_Incertae_sedis(3), Lens(1)
+     22  p=1 f=1 g=1 s=21  fam: Santalaceae(22)  gen: Thesium(22)
+     22  p=1 f=1 g=7 s=17  fam: Asteraceae(21), Eudicotyledonae_fam_Incertae_sedis(1)  gen: Parasenecio(5), Asteraceae_gen_Incertae_sedis(4), Ligularia(4)
+     22  p=1 f=1 g=1 s=22  fam: Cyperaceae(22)  gen: Carex(22)
+     21  p=1 f=1 g=9 s=13  fam: Poaceae(21)  gen: Poaceae_gen_Incertae_sedis(5), Themeda(5), Schizachyrium(3)
+     21  p=1 f=1 g=4 s=21  fam: Caprifoliaceae(21)  gen: Lonicera(16), Symphoricarpos(2), Triosteum(2)
+     21  p=1 f=1 g=3 s=17  fam: Asteraceae(20), Eudicotyledonae_fam_Incertae_sedis(1)  gen: Helichrysum(13), Asteraceae_gen_Incertae_sedis(3), Pseudognaphalium(2)
+
+clusters mixing phyla or orders (size >= 2), with composition:
+  3 clusters with >1 phylum
+     4  Anthophyta(3), Monilophyta(1)  e.g. Tragopogon_sp
+     2  Coniferophyta(1), Anthophyta(1)  e.g. Leichhardtia_brevis
+     2  Anthophyta(1), Coniferophyta(1)  e.g. Marsdenia_hemiptera

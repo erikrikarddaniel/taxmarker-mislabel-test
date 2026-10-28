@@ -1,0 +1,3 @@
+seq_name	original_label	predicted_label	lwr	original_label_exclusion	mismatch_rank	method
+AH012940	k__Viridiplantae;p__Anthophyta;c__Monocotyledonae;o__Poales;f__Cyperaceae;g__Carex;s__Carex_runssoroensis	k__Viridiplantae;p__Anthophyta;c__Monocotyledonae;o__Poales;f__Cyperaceae;g__Carex;s__Carex_monostachya	0.51	1.000	7	sativa
+AF284979	k__Viridiplantae;p__Anthophyta;c__Monocotyledonae;o__Poales;f__Cyperaceae;g__Carex;s__Carex_montana	k__Viridiplantae;p__Anthophyta;c__Monocotyledonae;o__Poales;f__Cyperaceae;g__Carex;s__Carex_gifuensis	0.51	1.000	7	sativa
