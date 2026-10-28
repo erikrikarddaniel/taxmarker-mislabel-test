@@ -73,3 +73,13 @@ unite_group_identity.tsv: $(SCRIPTS)/unite/group_identity.sh $(SCRIPTS)/unite/gr
 # Needs docker (raxtax 1.6.0 biocontainer).
 unite_raxtax_global.tsv: $(SCRIPTS)/unite/raxtax_global.py
 	python3 -I $< $(UNITE)/viridiplantae.fasta $(UNITE)/pipeline/bryophyta_fabaceae/taxonomy.tsv p__Bryophyta f__Fabaceae > $@
+
+# GBIF backbone (simple.txt.gz of https://hosted-datasets.gbif.org/datasets/backbone/current/, edition 2023-08-28);
+# $(UNITE)/fungi.fasta is made with scripts/unite/subset.sh <release.fasta.gz> k__Fungi.
+GBIF ?= $(HOME)/dev/taxmarker-its/gbif/simple.txt.gz
+
+unite_gbif_genus_plants.tsv: $(SCRIPTS)/unite/gbif_genus_survey.py
+	python3 -I $< $(UNITE)/viridiplantae.fasta $(GBIF) Plantae > $@
+
+unite_gbif_genus_fungi.tsv: $(SCRIPTS)/unite/gbif_genus_survey.py
+	python3 -I $< $(UNITE)/fungi.fasta $(GBIF) Fungi > $@

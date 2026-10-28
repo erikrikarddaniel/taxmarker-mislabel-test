@@ -53,8 +53,9 @@ Clustering with mmseqs decides which sequences have a relative to be tested agai
 - **Two genera have the wrong lineage in UNITE.**
   All six sequences of *Leichhardtia* are labelled as conifers (Cupressaceae) and all 18 of *Swartzia* as mosses (Ditrichaceae), but their sequences group with Apocynaceae and with Fabaceae, and *Swartzia* is a legume genus (@tbl-genus).
   The placement flags one of these 24 sequences, because a group with the same label supports itself (@tbl-pipeline).
-- **The taxonomy has to be cleaned before sequences are tested**, and the same is likely for other databases.
+- **The taxonomy has to be cleaned before sequences are tested.**
   A test that compares a sequence with the labels of its relatives cannot find an error that all of them share.
+  Against the GBIF backbone, 0.4% of the plant sequences are in genera that sit in another family and another higher taxon, and 1.6% of the fungal sequences; *Swartzia* and *Leichhardtia* are the two confirmed so far, and the fungal ones were not examined (@tbl-gbif).
 
 # Introduction
 
@@ -103,9 +104,19 @@ For each sequence the best identity, over the aligned columns where both sequenc
 MAFFT does not give the same alignment on every run, and identities moved by up to about 0.02 between runs.
 raxtax (the version and `--skip-exact-matches` setting of the pipeline) was also run on the 20 sequences of the *Swartzia* cluster against a database of the cluster and all other UNITE sequences of Bryophyta and Fabaceae (3,572 sequences), to see whether references outside the cluster make a difference (`scripts/unite/raxtax_global.py`).
 
+## Genus lineages against the GBIF backbone
+
+The genus names of UNITE were compared with the GBIF backbone (edition 2023-08-28, built on the July 2023 Catalogue of Life; file `simple.txt.gz` of the backbone archive), once for the plant sequences and once for the 93,085 sequences of `k__Fungi` (`scripts/unite/gbif_genus_survey.py`).
+Each combination of genus and family in UNITE was looked up among the genera of the backbone's kingdom (Plantae, Fungi), keeping the phylum, class, order and family of the accepted genera of that name and the families of its synonym and doubtful records.
+Genera whose name is a placeholder (`Incertae sedis`, `_sp`, `unidentified`) were skipped.
+The family agrees if an accepted genus of that name is in the same family.
+UNITE and the backbone name phyla, classes and orders differently, so a UNITE and a backbone taxon count as the same at a rank if they have the same name or if they occur together for at least five genera whose family agrees.
+The highest rank at which the lineage of UNITE differs from that of the backbone is reported for each genus (phylum, class, order or family); it is not assessable if the backbone has no accepted genus of that name or UNITE's name at the rank is a placeholder.
+A difference is a disagreement between two classifications and not necessarily an error of UNITE.
+
 ## Scripts and data
 
-`scripts/unite/` holds the code and `data/unite_*.tsv` the tables, built by `data/Makefile` from the cluster summaries, the published results of the runs and the UNITE subset (`make unite_sweep.tsv unite_pipeline.tsv unite_group_identity.tsv unite_raxtax_global.tsv`, with `UNITE` and `UNITERUNS` set; the last needs docker).
+`scripts/unite/` holds the code and `data/unite_*.tsv` the tables, built by `data/Makefile` from the cluster summaries, the published results of the runs and the UNITE subset (`make unite_sweep.tsv unite_pipeline.tsv unite_group_identity.tsv unite_raxtax_global.tsv unite_gbif_genus_plants.tsv unite_gbif_genus_fungi.tsv`, with `UNITE`, `UNITERUNS` and `GBIF` set; the fourth needs docker).
 `docs/unite/` keeps the cluster summaries (`summary_<identity>.txt`), the sequences that are in a cluster with a majority of another phylum (`minority_phylum_0.85.txt`) and the flag tables of the runs (`mislabels_<run>_<cluster>.tsv`).
 The UNITE release, the subset and the mmseqs output are not in the repository.
 
@@ -260,6 +271,72 @@ The 18 *Swartzia* sequences are not flagged, and raxtax does not flag them eithe
 The error in the reference also creates a flag on a correctly labelled sequence: MW226600, a *Marsdenia hemiptera*, is flagged by raxtax with *Leichhardtia* as the proposed genus.
 The comparison sets are samples, not all UNITE sequences, so a real but poorly sampled lineage of the parent taxon cannot be excluded by the identities alone; for these two genera the name of the genus settles it.
 
+## Genus lineages against the GBIF backbone
+
+```{r}
+#| label: fig-gbif
+#| fig-cap: "Genera whose lineage in UNITE differs from the GBIF backbone: whether the family agrees (left) and the highest rank at which the lineages differ (right). Only genera with a difference at some rank are shown; band width is the number of genera. A difference at family rank only means that phylum, class and order agree with GBIF, as for all 116 plant genera and 358 of the 367 fungal genera in that band (for the other 9 the order in UNITE is a placeholder)."
+#| fig-height: 4.5
+
+library(ggsankey)
+
+gb <- bind_rows(
+  read_tsv("data/unite_gbif_genus_plants.tsv", show_col_types = FALSE, na = character()) %>% mutate(group = "Plants"),
+  read_tsv("data/unite_gbif_genus_fungi.tsv", show_col_types = FALSE, na = character()) %>% mutate(group = "Fungi")
+) %>%
+  mutate(
+    family = case_when(first_mismatch == "NA" ~ "not assessable", class == "agrees" ~ "agrees", TRUE ~ "differs"),
+    highest = factor(first_mismatch, levels = c("phylum", "class", "order", "family", "none", "NA"))
+  )
+
+diff_flow <- gb %>%
+  filter(first_mismatch %in% c("phylum", "class", "order", "family")) %>%
+  mutate(`Family` = paste("family", family), `Highest rank that differs` = as.character(highest)) %>%
+  select(group, `Family`, `Highest rank that differs`, sequences) %>%
+  group_by(group, `Family`, `Highest rank that differs`) %>%
+  summarise(genera = n(), .groups = "drop")
+
+flows <- diff_flow %>%
+  group_by(group) %>%
+  group_modify(~ uncount(.x, genera) %>% make_long(`Family`, `Highest rank that differs`)) %>%
+  ungroup()
+
+ggplot(flows, aes(x = x, next_x = next_x, node = node, next_node = next_node, fill = node, label = node)) +
+  geom_sankey(flow.alpha = 0.55, node.color = "grey30") +
+  geom_sankey_label(size = 3, fill = "white") +
+  facet_wrap(~ group, scales = "free_y") +
+  scale_fill_brewer(palette = "Set2") +
+  labs(x = NULL, y = "Genera") +
+  theme(legend.position = "none", axis.text.y = element_blank(), axis.ticks.y = element_blank(), panel.grid = element_blank())
+```
+
+```{r}
+#| label: tbl-gbif
+#| tbl-cap: "Genus lineages of UNITE against the GBIF backbone: share of the sequences by the highest rank at which the lineages differ, and the share of sequences in genera with a difference at order rank or above and a different family (a genus that sits in another family and another higher taxon)."
+
+gb %>%
+  group_by(Group = group) %>%
+  summarise(
+    `Genera` = n(),
+    `Sequences` = sum(sequences),
+    `Agree (%)` = round(100 * sum(sequences[first_mismatch == "none"]) / sum(sequences), 1),
+    `Family (%)` = round(100 * sum(sequences[first_mismatch == "family"]) / sum(sequences), 1),
+    `Order (%)` = round(100 * sum(sequences[first_mismatch == "order"]) / sum(sequences), 1),
+    `Class (%)` = round(100 * sum(sequences[first_mismatch == "class"]) / sum(sequences), 1),
+    `Phylum (%)` = round(100 * sum(sequences[first_mismatch == "phylum"]) / sum(sequences), 1),
+    `Not assessable (%)` = round(100 * sum(sequences[first_mismatch == "NA"]) / sum(sequences), 1),
+    `Other family and higher taxon (%)` = round(100 * sum(sequences[first_mismatch %in% c("order", "class", "phylum") & class != "agrees"]) / sum(sequences), 1),
+    .groups = "drop"
+  ) %>%
+  kable()
+```
+
+The lineages of the genera agree with the backbone for 94% of the plant sequences and 89% of the fungal ones, and the largest difference is at family rank (@tbl-gbif).
+A difference at order, class or phylum with the same family means that the two classifications place the family differently, which does not affect a test that compares sequences with their relatives' labels.
+A genus that sits in another family and another higher taxon is the pattern of *Swartzia* and *Leichhardtia*: it is 0.4% of the plant sequences (35 genera) and 1.6% of the fungal ones (176 genera) (@fig-gbif, @tbl-gbif).
+Both known cases are found in the plants (*Swartzia* at phylum rank with the family in the backbone as Fabaceae, *Leichhardtia* at class rank), as are two names that the backbone gives to a flowering plant but that are also genera of mosses and algae (*Bartramia*, *Chaetophora*).
+The fungal differences were not examined one by one, and many are probably differences between UNITE's classification and the older one of the backbone (for example *Rhizophlyctis* and *Paraglomus*, whose family agrees), so the fungal figure is an upper bound.
+
 # Discussion
 
 **UNITE plants can be tested, mostly above species level.**
@@ -269,8 +346,9 @@ The species level is out of reach for most sequences because most species are re
 **The taxonomy has to be cleaned first.**
 Two of the four clusters hold a whole genus with a lineage that does not fit, *Leichhardtia* (6 sequences) and *Swartzia* (18).
 A placement test compares a sequence with the labels of its relatives, so a wrong label that all of them share cannot be found: the placement flags one of the 24 sequences and raxtax none.
-UNITE's taxonomy should therefore be cleaned before sequences are tested, for example by checking each genus against the lineage in an accepted-names backbone, and other databases are likely to have the same kind of error.
-Such a check was not tried here.
+UNITE's taxonomy should therefore be cleaned before sequences are tested, for example by checking each genus against the lineage in an accepted-names backbone.
+We tried this against the GBIF backbone: it finds both genera, and it suggests that the problem is rare in UNITE plants (35 genera and 0.4% of the sequences in another family and another higher taxon, two of them confirmed) and larger in fungi (176 genera and 1.6%, not examined, and probably inflated by differences between UNITE's classification and the older one of the backbone) (@tbl-gbif).
+Whether other databases have the same kind of error was not tested.
 
 **A phylum gate catches only part of it.**
 A gate that sets aside the sequences of a minority phylum in a cluster ([nf-core/taxmarker#76](https://github.com/nf-core/taxmarker/issues/76)) would catch the six *Leichhardtia* sequences, 6 of 74 in a cluster otherwise of Anthophyta.
